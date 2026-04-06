@@ -106,6 +106,8 @@ Worth spelling out so expectations stay clear:
 | **GitHub (code + this README)** | [github.com/jvinaymohan/glowarena](https://github.com/jvinaymohan/glowarena) |
 | **README anchor** | [github.com/jvinaymohan/glowarena#readme](https://github.com/jvinaymohan/glowarena#readme) |
 
+If GitHub still shows the old repo name, open **Settings → General → Repository name**, set it to **`glowarena`**, then run `git remote set-url origin https://github.com/jvinaymohan/glowarena.git` locally.
+
 **Live HTTPS URL for the running app:** not provided by GitHub itself. Deploy the **`web`** folder (e.g. Vercel with **Root Directory = `web`**) and add your production URL to this README after the first deploy.
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fjvinaymohan%2Fglowarena&root-directory=web)
