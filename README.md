@@ -24,3 +24,22 @@ From the repo root, `npm run dev` runs the same (see root `package.json`).
 ## Deploy note
 
 `npm run build` / host with a **writable** filesystem if you keep the JSON store, or migrate to a database for production.
+
+## Publish to GitHub
+
+Your project is committed on branch `main`. GitHub CLI (`gh`) is the fastest path:
+
+```bash
+cd /Users/vinayhome/Documents/Sandeep/GlowArena
+gh auth login          # follow prompts (browser or device code)
+gh repo create glow-arena --public --source=. --remote=origin --push
+```
+
+Pick any unused repo name instead of `glow-arena` if you prefer. After `--push`, share the URL GitHub prints (e.g. `https://github.com/YOUR_USER/glow-arena`).
+
+**Without `gh`:** create an empty repo on [github.com/new](https://github.com/new), then:
+
+```bash
+git remote add origin https://github.com/YOUR_USER/YOUR_REPO.git
+git push -u origin main
+```
