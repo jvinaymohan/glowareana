@@ -4,7 +4,7 @@
 
 **Purpose of the prototype:** validate UX with stakeholders (families, party planners, ops), test slot logic and “birthday vs public booking” precedence, and show how admin tools could sit beside a future payment gateway and database.
 
-**Repository (public):** [github.com/jvinaymohan/glowareana](https://github.com/jvinaymohan/glowareana) · `git clone https://github.com/jvinaymohan/glowareana.git`
+**Repository (public):** [github.com/jvinaymohan/glowarena](https://github.com/jvinaymohan/glowarena) · `git clone https://github.com/jvinaymohan/glowarena.git`
 
 **Detailed technical reference** (API tables, env vars, test checklist): [web/README.md](web/README.md)
 
@@ -103,20 +103,20 @@ Worth spelling out so expectations stay clear:
 
 | What | Link |
 |------|------|
-| **GitHub (code + this README)** | [github.com/jvinaymohan/glowareana](https://github.com/jvinaymohan/glowareana) |
-| **README anchor** | [github.com/jvinaymohan/glowareana#readme](https://github.com/jvinaymohan/glowareana#readme) |
+| **GitHub (code + this README)** | [github.com/jvinaymohan/glowarena](https://github.com/jvinaymohan/glowarena) |
+| **README anchor** | [github.com/jvinaymohan/glowarena#readme](https://github.com/jvinaymohan/glowarena#readme) |
 
 **Live HTTPS URL for the running app:** not provided by GitHub itself. Deploy the **`web`** folder (e.g. Vercel with **Root Directory = `web`**) and add your production URL to this README after the first deploy.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fjvinaymohan%2Fglowareana&root-directory=web)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fjvinaymohan%2Fglowarena&root-directory=web)
 
 ---
 
 ## Run locally
 
 ```bash
-git clone https://github.com/jvinaymohan/glowareana.git
-cd glowareana/web
+git clone https://github.com/jvinaymohan/glowarena.git
+cd glowarena/web
 npm install
 npm run dev
 ```
@@ -144,7 +144,7 @@ npm run build && npm run start   # production on port 3000
 ## Repository layout
 
 ```
-glowareana/
+glowarena/
 ├── README.md                 ← full overview (this file)
 ├── package.json              ← delegates scripts into web/
 └── web/
@@ -160,7 +160,7 @@ glowareana/
 
 ## Contributing / next steps (ideas)
 
-Wire **Razorpay** (or similar), **server-side price validation**, **email confirmations**, replace JSON with **Postgres** or **Planetscale**, and connect lead forms to **CRM** or **Resend**. Rename repo to fix typo **glowareana** → **glowarena** in GitHub settings if desired.
+Wire **Razorpay** (or similar), **server-side price validation**, **email confirmations**, replace JSON with **Postgres** or **Planetscale**, and connect lead forms to **CRM** or **Resend**. If your GitHub repo still uses the old misspelled name, rename it under **Settings → General** so it matches **glowarena**.
 
 ---
 
