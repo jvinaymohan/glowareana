@@ -2,6 +2,8 @@
 
 Next.js app for marketing, **live slot booking** (file-backed), **combo pricing**, **coupons**, **birthday enquiries** with optional **full-day venue hold**, and an **admin dashboard**. Use this doc when testing with stakeholders.
 
+**Repository:** [github.com/jvinaymohan/glowareana](https://github.com/jvinaymohan/glowareana)
+
 ## Quick start
 
 ```bash
