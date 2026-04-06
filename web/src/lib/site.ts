@@ -1,5 +1,7 @@
 export const site = {
   name: "Glow Arena",
+  /** On-logo tagline */
+  brandTagline: "Light Up Your Play",
   tagline: "Indoor Interactive Game Zone",
   area: "Koramangala, Bangalore",
   phone: "+91 98765 43210",

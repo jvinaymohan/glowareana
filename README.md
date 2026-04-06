@@ -1,8 +1,8 @@
 # Glow Arena
 
-Marketing site and booking prototype for **Glow Arena** — indoor game zone (Koramangala, Bangalore).
+Marketing site and **interactive prototype** for **Glow Arena** — indoor game zone (Koramangala, Bangalore): live booking UX, combos, coupons, birthday planner with venue hold, and admin ops.
 
-## Run locally
+## Run
 
 ```bash
 cd web
@@ -10,20 +10,17 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). From the repo root you can also run `npm run dev` (see root `package.json`).
+From the repo root, `npm run dev` runs the same (see root `package.json`).
+
+## Documentation
+
+**Full prototype reference (routes, APIs, env, test checklist):** [web/README.md](web/README.md)
 
 ## Stack
 
 - Next.js (App Router), TypeScript, Tailwind CSS
-- File-backed store: `web/data/arena-store.json` (gitignored; created at runtime)
-- Optional admin lock: set `ADMIN_SECRET` in `web/.env.local`
+- Data: `web/data/arena-store.json` (created at runtime, gitignored)
 
-## Routes
+## Deploy note
 
-- `/` — Home
-- `/games`, `/combos`, `/birthday`, `/corporate`, `/book`, `/contact`
-- `/admin` — Bookings, blocks, birthday requests, revenue summary
-
-## Deploy
-
-Build: `cd web && npm run build`. Use a host with a writable filesystem if you keep the JSON store, or swap the store for a database for production.
+`npm run build` / host with a **writable** filesystem if you keep the JSON store, or migrate to a database for production.

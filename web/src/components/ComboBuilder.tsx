@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { CouponTotals } from "@/components/CouponField";
 import { CouponField } from "@/components/CouponField";
 import { computeComboLineItems } from "@/lib/combo-pricing";
@@ -37,19 +37,19 @@ export function ComboBuilder() {
     complete,
   } = lines;
 
-  useEffect(() => {
-    if (!complete) setCouponTotals(null);
-  }, [complete]);
-
-  const couponDiscountInr = couponTotals?.discountInr ?? 0;
-  const payableCombo = couponTotals?.payableInr ?? groupTotal;
+  const couponDiscountInr = complete ? (couponTotals?.discountInr ?? 0) : 0;
+  const payableCombo = complete
+    ? (couponTotals?.payableInr ?? groupTotal)
+    : groupTotal;
 
   function setSize(next: ComboSize) {
     setComboSize(next);
     setSelectedOrder((prev) => prev.slice(0, next));
+    setCouponTotals(null);
   }
 
   function toggleGame(slug: string) {
+    setCouponTotals(null);
     setSelectedOrder((prev) => {
       const i = prev.indexOf(slug);
       if (i !== -1) {

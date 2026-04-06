@@ -584,6 +584,16 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
               }
               onClick={async () => {
                 setSubmitError(null);
+                if (
+                  slotsLoading ||
+                  birthdayPartyHold ||
+                  !currentSlotOpen
+                ) {
+                  setSubmitError(
+                    "This slot is not available. Go back to date & time and pick another.",
+                  );
+                  return;
+                }
                 setSubmitting(true);
                 try {
                   const r = await fetch("/api/bookings", {

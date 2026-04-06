@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { applyCoupon, DEMO_COUPON_CODES, normalizeCouponCode } from "@/lib/coupons";
 
 export type CouponTotals = {
@@ -24,8 +24,6 @@ export function CouponField({ baseAmountInr, onTotalsChange }: CouponFieldProps)
     null,
   );
   const [error, setError] = useState<string | null>(null);
-  const onTotalsChangeRef = useRef(onTotalsChange);
-  onTotalsChangeRef.current = onTotalsChange;
 
   const totals = useMemo((): CouponTotals => {
     const safeBase = Math.max(0, Math.round(baseAmountInr));
@@ -55,8 +53,8 @@ export function CouponField({ baseAmountInr, onTotalsChange }: CouponFieldProps)
   }, [baseAmountInr, appliedCode]);
 
   useEffect(() => {
-    onTotalsChangeRef.current(totals);
-  }, [totals]);
+    onTotalsChange(totals);
+  }, [totals, onTotalsChange]);
 
   function handleApply() {
     const res = applyCoupon(baseAmountInr, input);

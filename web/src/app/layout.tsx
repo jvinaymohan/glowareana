@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
-import { DM_Sans, Syne } from "next/font/google";
+import { DM_Sans, Montserrat } from "next/font/google";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { site } from "@/lib/site";
 import "./globals.css";
 
-const syne = Syne({
+const display = Montserrat({
   variable: "--font-syne",
   subsets: ["latin"],
+  weight: ["600", "700", "800"],
 });
 
 const dmSans = DM_Sans({
@@ -21,7 +22,7 @@ export const metadata: Metadata = {
     template: `%s | ${site.name}`,
   },
   description:
-    "High-energy indoor game zone in Koramangala: Floor is Lava, Push Battles, Laser Maze, and more. Book birthdays, corporates, and weekend sessions.",
+    "Light Up Your Play — high-energy neon indoor game zone in Koramangala: Floor is Lava, Push Battles, Laser Maze, and more. Book birthdays, corporates, and weekend sessions.",
   keywords: [
     "indoor games Koramangala",
     "birthday party venue Koramangala",
@@ -43,7 +44,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${syne.variable} ${dmSans.variable} h-full`}>
+    <html lang="en" className={`${display.variable} ${dmSans.variable} h-full`}>
       <body className="min-h-full flex flex-col antialiased">
         <SiteHeader />
         <main className="flex-1">{children}</main>
