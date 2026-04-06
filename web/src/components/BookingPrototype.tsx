@@ -35,6 +35,8 @@ type BookingPrototypeProps = {
   initialGameSlug?: string;
 };
 
+type SessionUser = { id: string; email: string; phone: string };
+
 export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
   const validInitial =
     initialGameSlug && games.some((g) => g.slug === initialGameSlug)
@@ -65,6 +67,7 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [confirmedRef, setConfirmedRef] = useState<string | null>(null);
+  const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
 
   const selectedGame = useMemo(
     () => games.find((g) => g.slug === gameId) ?? games[0],
@@ -83,6 +86,19 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
     const max = selectedGame.maxKidsPerSession;
     setKidCount((k) => Math.min(Math.max(1, k), max));
   }, [selectedGame]);
+
+  useEffect(() => {
+    fetch("/api/auth/me", { credentials: "include" })
+      .then((r) => r.json())
+      .then((d: { user?: SessionUser | null }) => {
+        if (d.user) {
+          setSessionUser(d.user);
+          setEmail((prev) => prev || d.user!.email);
+          setPhone((prev) => prev || d.user!.phone);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const ac = new AbortController();
@@ -471,6 +487,29 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
           <h2 className="font-[family-name:var(--font-syne)] text-xl font-bold text-white">
             Waiver & pay
           </h2>
+          {sessionUser ? (
+            <p className="rounded-lg border border-[var(--ga-cyan)]/30 bg-[var(--ga-cyan)]/10 px-4 py-3 text-sm text-zinc-300">
+              Signed in as{" "}
+              <strong className="text-white">{sessionUser.email}</strong>. Use
+              the same phone as on your account (
+              <span className="font-mono text-zinc-400">{sessionUser.phone}</span>
+              ) so we can link this booking and reach you on WhatsApp.
+            </p>
+          ) : (
+            <p className="text-sm text-zinc-500">
+              <a href="/login" className="text-[var(--ga-blue)] hover:underline">
+                Log in
+              </a>{" "}
+              or{" "}
+              <a
+                href="/register"
+                className="text-[var(--ga-blue)] hover:underline"
+              >
+                register
+              </a>{" "}
+              to save reservations under your account and reschedule anytime.
+            </p>
+          )}
           <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 p-4">
             <input
               type="checkbox"
@@ -599,6 +638,7 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
                   const r = await fetch("/api/bookings", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
+                    credentials: "include",
                     body: JSON.stringify({
                       gameSlug: gameId,
                       date: dateStr,

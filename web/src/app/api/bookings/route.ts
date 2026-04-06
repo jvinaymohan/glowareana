@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSessionUserId } from "@/lib/auth-session";
 import { requireAdmin } from "@/lib/admin-auth";
 import { createBooking, readStore } from "@/lib/arena-store";
 import {
@@ -36,6 +37,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = (await request.json()) as Record<string, unknown>;
+    const sessionUserId = await getSessionUserId();
     const result = createBooking({
       gameSlug: String(body.gameSlug ?? ""),
       date: String(body.date ?? ""),
@@ -45,6 +47,7 @@ export async function POST(request: NextRequest) {
       customerName: String(body.customerName ?? ""),
       phone: String(body.phone ?? ""),
       email: String(body.email ?? ""),
+      userId: sessionUserId ?? null,
     });
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 400 });

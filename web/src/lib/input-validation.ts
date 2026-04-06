@@ -51,3 +51,46 @@ export function sanitizeEmail(raw: string): { ok: true; value: string } | { ok: 
 export function sanitizeNotes(raw: string, max: number): string {
   return raw.trim().slice(0, max);
 }
+
+/** Normalize to E.164-style for storage & WhatsApp (`wa.me/<digits>` without +). */
+export function toCanonicalPhoneE164(sanitizedPhoneValue: string): string {
+  const digits = sanitizedPhoneValue.replace(/\D/g, "");
+  if (digits.length === 10 && /^[6-9]/.test(digits)) {
+    return `+91${digits}`;
+  }
+  if (digits.length === 12 && digits.startsWith("91") && /^91[6-9]/.test(digits)) {
+    return `+${digits}`;
+  }
+  if (sanitizedPhoneValue.trim().startsWith("+")) {
+    return `+${digits}`;
+  }
+  return `+${digits}`;
+}
+
+const PASSWORD_MIN = 8;
+const PASSWORD_MAX = 72;
+
+export function validatePassword(raw: string): { ok: true; value: string } | { ok: false; error: string } {
+  const v = raw;
+  if (v.length < PASSWORD_MIN) {
+    return { ok: false, error: `Password must be at least ${PASSWORD_MIN} characters` };
+  }
+  if (v.length > PASSWORD_MAX) {
+    return { ok: false, error: "Password is too long" };
+  }
+  return { ok: true, value: v };
+}
+
+export function requireEmailForAuth(raw: string): { ok: true; value: string } | { ok: false; error: string } {
+  const v = raw.trim().toLowerCase();
+  if (!v) {
+    return { ok: false, error: "Email is required" };
+  }
+  if (v.length > LIMITS.emailMax) {
+    return { ok: false, error: "Email is too long" };
+  }
+  if (!EMAIL_RE.test(v)) {
+    return { ok: false, error: "Please enter a valid email address" };
+  }
+  return { ok: true, value: v };
+}

@@ -53,6 +53,14 @@ The `/admin` UI stores the secret in **localStorage** (`glowArenaAdminSecret`) a
 
 ---
 
+## Customer accounts (email + phone)
+
+- **`/register`** — email, phone, password (min 8). Phone is stored as **E.164** (e.g. `+919876543210`) for **WhatsApp** (`wa.me/919876543210` without `+`).
+- **`/login`** — email **or** phone + password. Session cookie (**httpOnly**, 14 days). Set **`AUTH_SECRET`** in production (see `.env.example`).
+- **`/account`** — list bookings linked to the account; **reschedule** (same game, new date/slot) via **`PATCH /api/bookings/[id]`**.
+- **Booking while logged in** — `POST /api/bookings` attaches **`userId`** if the phone on the booking **matches** the account phone (canonical).
+- **Guest bookings** — still allowed; phone on the row is the WhatsApp key. If the guest later **logs in with the same phone**, they can **reschedule** those rows (matched by phone until linked).
+
 ## Public pages (marketing + flows)
 
 | Route | What it does |
@@ -124,6 +132,12 @@ After load (and secret if required):
 | GET | `/api/admin/stats?from=&to=` | Admin if secret set | Revenue / counts |
 | GET/POST | `/api/birthday-requests` | GET: admin; POST: public (rate-limited) | List / create |
 | PATCH | `/api/birthday-requests` | Admin | Toggle `blocksPublicSlots` |
+| POST | `/api/auth/register` | No | Create user + session (rate-limited) |
+| POST | `/api/auth/login` | No | Session (rate-limited) |
+| POST | `/api/auth/logout` | No | Clear session |
+| GET | `/api/auth/me` | No | Current user or `null` |
+| GET | `/api/my/bookings` | Session | List user’s bookings |
+| PATCH | `/api/bookings/[id]` | Session | Reschedule own booking |
 
 ---
 

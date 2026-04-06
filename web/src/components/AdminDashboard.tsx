@@ -19,6 +19,7 @@ type BookingRow = {
   phone: string;
   email: string;
   createdAt: string;
+  userId: string | null;
 };
 
 type BlockRow = {
@@ -247,10 +248,17 @@ export function AdminDashboard() {
       "customerName",
       "phone",
       "email",
+      "userId",
       "createdAt",
     ] as const;
     const rows = filteredBookings.map((b) =>
-      cols.map((c) => `"${String(b[c]).replace(/"/g, '""')}"`).join(","),
+      cols
+        .map((c) => {
+          const v = b[c];
+          const s = v == null ? "" : String(v);
+          return `"${s.replace(/"/g, '""')}"`;
+        })
+        .join(","),
     );
     const csv = [cols.join(","), ...rows].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
@@ -705,13 +713,14 @@ export function AdminDashboard() {
                 <th className="py-2 pr-2">Kids</th>
                 <th className="py-2 pr-2">Paid</th>
                 <th className="py-2 pr-2">Contact</th>
-                <th className="py-2">Phone</th>
+                <th className="py-2 pr-2">Phone</th>
+                <th className="py-2">Account</th>
               </tr>
             </thead>
             <tbody>
               {filteredBookings.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-zinc-600">
+                  <td colSpan={9} className="py-8 text-center text-zinc-600">
                     No bookings in range
                   </td>
                 </tr>
@@ -727,7 +736,18 @@ export function AdminDashboard() {
                     <td className="py-2 pr-2">{b.kidCount}</td>
                     <td className="py-2 pr-2">{money(b.payableInr)}</td>
                     <td className="py-2 pr-2">{b.customerName}</td>
-                    <td className="py-2">{b.phone}</td>
+                    <td className="py-2 pr-2 font-mono text-[10px] text-zinc-400">
+                      {b.phone}
+                    </td>
+                    <td className="py-2 text-zinc-500">
+                      {b.userId ? (
+                        <span className="text-[10px]" title={b.userId}>
+                          Linked
+                        </span>
+                      ) : (
+                        "Guest"
+                      )}
+                    </td>
                   </tr>
                 ))
               )}

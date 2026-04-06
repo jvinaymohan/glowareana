@@ -17,8 +17,19 @@ import {
   sanitizeName,
   sanitizeNotes,
   sanitizePhone,
+  toCanonicalPhoneE164,
 } from "@/lib/input-validation";
 import { games } from "@/lib/site";
+import bcrypt from "bcryptjs";
+
+export type StoredUser = {
+  id: string;
+  email: string;
+  /** E.164 (e.g. +919876543210) for WhatsApp / wa.me integration */
+  phone: string;
+  passwordHash: string;
+  createdAt: string;
+};
 
 export type StoredBooking = {
   id: string;
@@ -35,9 +46,12 @@ export type StoredBooking = {
   payableInr: number;
   couponCode: string | null;
   customerName: string;
+  /** Canonical E.164 — used for WhatsApp notifications */
   phone: string;
   email: string;
   status: "confirmed";
+  /** Set when the guest was logged in at booking time, or linked on reschedule */
+  userId: string | null;
 };
 
 export type SlotBlock = {
@@ -82,12 +96,20 @@ export type ArenaStore = {
   bookings: StoredBooking[];
   blocks: SlotBlock[];
   birthdayRequests: BirthdayPartyRequest[];
+  users: StoredUser[];
 };
 
 const DATA_DIR = join(process.cwd(), "data");
 const STORE_PATH = join(DATA_DIR, "arena-store.json");
 
-const empty: ArenaStore = { bookings: [], blocks: [], birthdayRequests: [] };
+const empty: ArenaStore = {
+  bookings: [],
+  blocks: [],
+  birthdayRequests: [],
+  users: [],
+};
+
+const BCRYPT_ROUNDS = 10;
 
 export function readStore(): ArenaStore {
   try {
@@ -116,13 +138,27 @@ export function readStore(): ArenaStore {
             : hasDate,
       };
     });
+    const rawUsers = Array.isArray((parsed as { users?: unknown }).users)
+      ? ((parsed as { users: StoredUser[] }).users ?? [])
+      : [];
+    const users = rawUsers.map((u) => ({
+      ...u,
+      email: String(u.email ?? "").toLowerCase(),
+    }));
+    const bookings = (Array.isArray(parsed.bookings) ? parsed.bookings : []).map(
+      (b: StoredBooking) => ({
+        ...b,
+        userId: typeof b.userId === "string" ? b.userId : null,
+      }),
+    );
     return {
-      bookings: Array.isArray(parsed.bookings) ? parsed.bookings : [],
+      bookings,
       blocks: Array.isArray(parsed.blocks) ? parsed.blocks : [],
       birthdayRequests,
+      users,
     };
   } catch {
-    return { bookings: [], blocks: [], birthdayRequests: [] };
+    return { bookings: [], blocks: [], birthdayRequests: [], users: [] };
   }
 }
 
@@ -159,9 +195,11 @@ export function slotBooked(
   gameSlug: string,
   date: string,
   slotKey: string,
+  excludeBookingId?: string,
 ): StoredBooking | undefined {
   return store.bookings.find(
     (b) =>
+      b.id !== excludeBookingId &&
       b.gameSlug === gameSlug &&
       b.date === date &&
       b.slotKey === slotKey &&
@@ -232,6 +270,8 @@ export type CreateBookingInput = {
   customerName: string;
   phone: string;
   email: string;
+  /** When logged in, links reservation to the account (WhatsApp + self-service). */
+  userId?: string | null;
 };
 
 export function createBooking(
@@ -277,6 +317,9 @@ export function createBooking(
   if (!phoneRes.ok) return { ok: false, error: phoneRes.error };
   const emailRes = sanitizeEmail(input.email);
   if (!emailRes.ok) return { ok: false, error: emailRes.error };
+  const phoneE164 = toCanonicalPhoneE164(phoneRes.value);
+
+  const linkedUserId: string | null = input.userId ?? null;
 
   const subtotalInr = Math.max(0, Math.round(game.priceInr * kidCount));
   let discountInr = 0;
@@ -291,6 +334,16 @@ export function createBooking(
   const payableInr = Math.max(0, subtotalInr - discountInr);
 
   const store = readStore();
+
+  if (linkedUserId) {
+    const u = store.users.find((x) => x.id === linkedUserId);
+    if (!u || u.phone !== phoneE164) {
+      return {
+        ok: false,
+        error: "Phone number must match your account to link this booking.",
+      };
+    }
+  }
 
   if (isDateHeldForBirthdayParty(store, input.date)) {
     return {
@@ -330,9 +383,10 @@ export function createBooking(
     payableInr,
     couponCode: couponStored,
     customerName: nameRes.value,
-    phone: phoneRes.value,
+    phone: phoneE164,
     email: emailRes.value,
     status: "confirmed",
+    userId: linkedUserId,
   };
 
   store.bookings.push(booking);
@@ -459,7 +513,7 @@ export function createBirthdayPartyRequest(
     returnGiftsFeeInr,
     estimatedTotalInr,
     customerName: nameRes.value,
-    phone: phoneRes.value,
+    phone: toCanonicalPhoneE164(phoneRes.value),
     email: emailRes.value,
     preferredDate: preferredTrimmed,
     notes: sanitizeNotes(input.notes, LIMITS.notesMax),
@@ -535,6 +589,148 @@ export function removeBlock(id: string): boolean {
   if (store.blocks.length === before) return false;
   writeStore(store);
   return true;
+}
+
+export async function registerUser(
+  email: string,
+  phoneE164: string,
+  passwordPlain: string,
+): Promise<{ ok: true; user: StoredUser } | { ok: false; error: string }> {
+  const store = readStore();
+  const emailLower = email.toLowerCase();
+  if (store.users.some((u) => u.email === emailLower)) {
+    return { ok: false, error: "An account already exists with this email" };
+  }
+  if (store.users.some((u) => u.phone === phoneE164)) {
+    return {
+      ok: false,
+      error: "An account already exists with this phone number",
+    };
+  }
+  const passwordHash = await bcrypt.hash(passwordPlain, BCRYPT_ROUNDS);
+  const user: StoredUser = {
+    id: crypto.randomUUID(),
+    email: emailLower,
+    phone: phoneE164,
+    passwordHash,
+    createdAt: new Date().toISOString(),
+  };
+  store.users.push(user);
+  writeStore(store);
+  return { ok: true, user };
+}
+
+export async function verifyUserLogin(
+  identifier: string,
+  passwordPlain: string,
+): Promise<{ ok: true; user: StoredUser } | { ok: false; error: string }> {
+  const store = readStore();
+  const trimmed = identifier.trim();
+  let user: StoredUser | undefined;
+  if (trimmed.includes("@")) {
+    user = store.users.find((u) => u.email === trimmed.toLowerCase());
+  } else {
+    const phoneRes = sanitizePhone(trimmed);
+    if (!phoneRes.ok) {
+      return { ok: false, error: "Invalid email, phone, or password" };
+    }
+    const e164 = toCanonicalPhoneE164(phoneRes.value);
+    user = store.users.find((u) => u.phone === e164);
+  }
+  if (!user) {
+    return { ok: false, error: "Invalid email, phone, or password" };
+  }
+  const match = await bcrypt.compare(passwordPlain, user.passwordHash);
+  if (!match) {
+    return { ok: false, error: "Invalid email, phone, or password" };
+  }
+  return { ok: true, user };
+}
+
+export function listBookingsForUser(userId: string): StoredBooking[] {
+  const store = readStore();
+  const user = store.users.find((u) => u.id === userId);
+  if (!user) return [];
+  return store.bookings.filter(
+    (b) =>
+      b.status === "confirmed" &&
+      (b.userId === userId || (!b.userId && b.phone === user.phone)),
+  );
+}
+
+export function rescheduleBooking(input: {
+  bookingId: string;
+  userId: string;
+  newDate: string;
+  newSlotKey: string;
+}): { ok: true; booking: StoredBooking } | { ok: false; error: string } {
+  const store = readStore();
+  const user = store.users.find((u) => u.id === input.userId);
+  if (!user) return { ok: false, error: "Unauthorized" };
+
+  const booking = store.bookings.find((b) => b.id === input.bookingId);
+  if (!booking || booking.status !== "confirmed") {
+    return { ok: false, error: "Booking not found" };
+  }
+
+  const ownsByUser =
+    booking.userId === input.userId ||
+    (!booking.userId && booking.phone === user.phone);
+  if (!ownsByUser) {
+    return { ok: false, error: "You cannot change this reservation" };
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.newDate)) {
+    return { ok: false, error: "Invalid date" };
+  }
+  if (!isDateWithinOnlineBookingWindow(input.newDate)) {
+    return {
+      ok: false,
+      error: "This date is outside the allowed booking window.",
+    };
+  }
+
+  const validKeys = new Set(generateDaySlots().map((s) => s.key));
+  if (!validKeys.has(input.newSlotKey)) {
+    return { ok: false, error: "Invalid time slot" };
+  }
+  const slotDef = generateDaySlots().find((s) => s.key === input.newSlotKey);
+  if (!slotDef) return { ok: false, error: "Invalid time slot" };
+
+  if (isDateHeldForBirthdayParty(store, input.newDate)) {
+    return {
+      ok: false,
+      error:
+        "This date is reserved for a birthday party. Pick another day or contact the arena.",
+    };
+  }
+  if (slotBlocked(store, booking.gameSlug, input.newDate, input.newSlotKey)) {
+    return { ok: false, error: "This slot is blocked. Choose another time." };
+  }
+  if (
+    slotBooked(
+      store,
+      booking.gameSlug,
+      input.newDate,
+      input.newSlotKey,
+      booking.id,
+    )
+  ) {
+    return {
+      ok: false,
+      error: "This slot was just taken. Please pick another time.",
+    };
+  }
+
+  booking.date = input.newDate;
+  booking.slotKey = input.newSlotKey;
+  booking.slotLabel = slotDef.rangeLabel;
+  if (!booking.userId) {
+    booking.userId = input.userId;
+  }
+
+  writeStore(store);
+  return { ok: true, booking };
 }
 
 export function computeStats(store: ArenaStore, from: string, to: string) {

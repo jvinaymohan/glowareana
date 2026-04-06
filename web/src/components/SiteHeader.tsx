@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { nav, site } from "@/lib/site";
+import { AuthNav, AuthNavMobile } from "@/components/AuthNav";
 import { SiteLogo } from "@/components/SiteLogo";
 
 export function SiteHeader() {
@@ -40,7 +41,8 @@ export function SiteHeader() {
           })}
         </nav>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-3">
+          <AuthNav />
           <Link
             href="/book"
             className="ga-btn-neon hidden rounded-full px-4 py-2 text-sm font-semibold transition sm:inline-flex"
@@ -72,6 +74,7 @@ export function SiteHeader() {
                 {item.label}
               </Link>
             ))}
+            <AuthNavMobile onNavigate={() => setOpen(false)} />
             <Link
               href="/book"
               className="ga-btn-neon mt-2 rounded-full py-3 text-center text-base font-semibold"

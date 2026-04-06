@@ -11,6 +11,10 @@ const MAX_BIRTHDAY_PER_WINDOW = 12;
 
 const bookingBuckets = new Map<string, number[]>();
 const birthdayBuckets = new Map<string, number[]>();
+const authBuckets = new Map<string, number[]>();
+
+const AUTH_WINDOW_MS = 15 * 60 * 1000;
+const MAX_AUTH_PER_WINDOW = 40;
 
 function prune(now: number, stamps: number[], windowMs: number): number[] {
   return stamps.filter((t) => now - t < windowMs);
@@ -45,6 +49,10 @@ export function allowBirthdayMutation(clientKey: string): boolean {
     MAX_BIRTHDAY_PER_WINDOW,
     BIRTHDAY_WINDOW_MS,
   );
+}
+
+export function allowAuthAttempt(clientKey: string): boolean {
+  return allow(authBuckets, clientKey, MAX_AUTH_PER_WINDOW, AUTH_WINDOW_MS);
 }
 
 export function clientKeyFromRequest(request: Request): string {
