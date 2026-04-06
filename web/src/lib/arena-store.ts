@@ -1,13 +1,23 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "fs";
 import { join } from "path";
 import {
   BIRTHDAY_KID_MAX,
   BIRTHDAY_KID_MIN,
+  BIRTHDAY_PREFERRED_MAX_DAYS_AHEAD,
   BIRTHDAY_RETURN_GIFT_PER_CHILD_INR,
 } from "@/lib/birthday-config";
-import { generateDaySlots } from "@/lib/booking";
+import { generateDaySlots, isDateWithinOnlineBookingWindow } from "@/lib/booking";
 import type { ComboSize } from "@/lib/combos";
 import { computeComboLineItems } from "@/lib/combo-pricing";
+import { applyCoupon } from "@/lib/coupons";
+import { parseYmd } from "@/lib/date-utils";
+import {
+  LIMITS,
+  sanitizeEmail,
+  sanitizeName,
+  sanitizeNotes,
+  sanitizePhone,
+} from "@/lib/input-validation";
 import { games } from "@/lib/site";
 
 export type StoredBooking = {
@@ -116,9 +126,21 @@ export function readStore(): ArenaStore {
   }
 }
 
+/** Atomic replace to reduce torn writes if the process crashes mid-write. */
 export function writeStore(store: ArenaStore): void {
   if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
-  writeFileSync(STORE_PATH, JSON.stringify(store, null, 2), "utf-8");
+  const json = JSON.stringify(store, null, 2);
+  const tmp = join(
+    DATA_DIR,
+    `.arena-store.${process.pid}.${Date.now()}.tmp`,
+  );
+  writeFileSync(tmp, json, "utf-8");
+  try {
+    if (existsSync(STORE_PATH)) unlinkSync(STORE_PATH);
+  } catch {
+    /* ignore */
+  }
+  renameSync(tmp, STORE_PATH);
 }
 
 export function slotBlocked(
@@ -198,15 +220,14 @@ export function computeSlotAvailability(
   });
 }
 
+/**
+ * Public booking payload — prices are computed on the server (never trust the client).
+ */
 export type CreateBookingInput = {
   gameSlug: string;
   date: string;
   slotKey: string;
-  slotLabel: string;
   kidCount: number;
-  subtotalInr: number;
-  discountInr: number;
-  payableInr: number;
   couponCode: string | null;
   customerName: string;
   phone: string;
@@ -224,10 +245,14 @@ export function createBooking(
     return { ok: false, error: "Invalid time slot" };
   }
 
+  const slotDef = generateDaySlots().find((s) => s.key === input.slotKey);
+  if (!slotDef) return { ok: false, error: "Invalid time slot" };
+
+  const kidCount = Math.floor(Number(input.kidCount));
   if (
-    input.kidCount < 1 ||
-    input.kidCount > game.maxKidsPerSession ||
-    !Number.isInteger(input.kidCount)
+    !Number.isFinite(kidCount) ||
+    kidCount < 1 ||
+    kidCount > game.maxKidsPerSession
   ) {
     return {
       ok: false,
@@ -238,6 +263,32 @@ export function createBooking(
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) {
     return { ok: false, error: "Invalid date" };
   }
+
+  if (!isDateWithinOnlineBookingWindow(input.date)) {
+    return {
+      ok: false,
+      error: "This date is outside the allowed booking window.",
+    };
+  }
+
+  const nameRes = sanitizeName(input.customerName);
+  if (!nameRes.ok) return { ok: false, error: nameRes.error };
+  const phoneRes = sanitizePhone(input.phone);
+  if (!phoneRes.ok) return { ok: false, error: phoneRes.error };
+  const emailRes = sanitizeEmail(input.email);
+  if (!emailRes.ok) return { ok: false, error: emailRes.error };
+
+  const subtotalInr = Math.max(0, Math.round(game.priceInr * kidCount));
+  let discountInr = 0;
+  let couponStored: string | null = null;
+  const rawCoupon = input.couponCode?.trim() ?? "";
+  if (rawCoupon) {
+    const applied = applyCoupon(subtotalInr, rawCoupon);
+    if (!applied.ok) return { ok: false, error: applied.error };
+    discountInr = applied.discountInr;
+    couponStored = applied.code;
+  }
+  const payableInr = Math.max(0, subtotalInr - discountInr);
 
   const store = readStore();
 
@@ -272,25 +323,34 @@ export function createBooking(
     gameSlug: input.gameSlug,
     gameTitle: game.title,
     slotKey: input.slotKey,
-    slotLabel: input.slotLabel,
-    kidCount: input.kidCount,
-    subtotalInr: Math.max(0, Math.round(input.subtotalInr)),
-    discountInr: Math.max(0, Math.round(input.discountInr)),
-    payableInr: Math.max(0, Math.round(input.payableInr)),
-    couponCode: input.couponCode,
-    customerName: input.customerName.trim(),
-    phone: input.phone.trim(),
-    email: input.email.trim(),
+    slotLabel: slotDef.rangeLabel,
+    kidCount,
+    subtotalInr,
+    discountInr,
+    payableInr,
+    couponCode: couponStored,
+    customerName: nameRes.value,
+    phone: phoneRes.value,
+    email: emailRes.value,
     status: "confirmed",
   };
-
-  if (!booking.customerName || !booking.phone) {
-    return { ok: false, error: "Name and phone are required" };
-  }
 
   store.bookings.push(booking);
   writeStore(store);
   return { ok: true, booking };
+}
+
+function isBirthdayPreferredDateAllowed(ymd: string): boolean {
+  const parsed = parseYmd(ymd);
+  if (!parsed) return false;
+  const today = new Date();
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const last = new Date(start);
+  last.setDate(last.getDate() + BIRTHDAY_PREFERRED_MAX_DAYS_AHEAD);
+  const d = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+  if (d < start) return false;
+  if (d > last) return false;
+  return true;
 }
 
 export type CreateBirthdayPartyInput = {
@@ -355,23 +415,30 @@ export function createBirthdayPartyRequest(
     return { ok: false, error: "Combo is incomplete" };
   }
 
+  const nameRes = sanitizeName(input.customerName);
+  if (!nameRes.ok) return { ok: false, error: nameRes.error };
+  const phoneRes = sanitizePhone(input.phone);
+  if (!phoneRes.ok) return { ok: false, error: phoneRes.error };
+  const emailRes = sanitizeEmail(input.email);
+  if (!emailRes.ok) return { ok: false, error: emailRes.error };
+
   const returnGifts = Boolean(input.returnGifts);
   const returnGiftsFeeInr = returnGifts
     ? kidCount * BIRTHDAY_RETURN_GIFT_PER_CHILD_INR
     : 0;
   const estimatedTotalInr = lines.groupTotal + returnGiftsFeeInr;
 
-  const name = input.customerName.trim();
-  const phone = input.phone.trim();
-  if (!name || !phone) {
-    return { ok: false, error: "Name and phone are required" };
-  }
-
   const id = crypto.randomUUID();
   const reference = `BP-${id.slice(0, 8).toUpperCase()}`;
 
   const preferredTrimmed = input.preferredDate.trim();
   const hasValidPreferred = /^\d{4}-\d{2}-\d{2}$/.test(preferredTrimmed);
+  if (hasValidPreferred && !isBirthdayPreferredDateAllowed(preferredTrimmed)) {
+    return {
+      ok: false,
+      error: "Preferred date must be within the next year and not in the past.",
+    };
+  }
   const reserveVenue = input.reserveVenueForPublicBooking !== false;
   const blocksPublicSlots = hasValidPreferred && reserveVenue;
 
@@ -391,11 +458,11 @@ export function createBirthdayPartyRequest(
     comboGroupTotalInr: lines.groupTotal,
     returnGiftsFeeInr,
     estimatedTotalInr,
-    customerName: name,
-    phone,
-    email: input.email.trim(),
+    customerName: nameRes.value,
+    phone: phoneRes.value,
+    email: emailRes.value,
     preferredDate: preferredTrimmed,
-    notes: input.notes.trim(),
+    notes: sanitizeNotes(input.notes, LIMITS.notesMax),
     status: "requested",
     blocksPublicSlots,
   };
@@ -454,7 +521,7 @@ export function addBlock(input: {
     date: input.date,
     gameSlug: input.gameSlug,
     slotKey: input.slotKey,
-    note: input.note.trim() || "Blocked",
+    note: sanitizeNotes(input.note, LIMITS.blockNoteMax) || "Blocked",
   };
   store.blocks.push(block);
   writeStore(store);

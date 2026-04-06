@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { createBooking, readStore } from "@/lib/arena-store";
+import {
+  allowBookingMutation,
+  clientKeyFromRequest,
+} from "@/lib/rate-limit";
 
 export async function GET(request: NextRequest) {
   const denied = requireAdmin(request);
@@ -22,17 +26,21 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const key = clientKeyFromRequest(request);
+  if (!allowBookingMutation(key)) {
+    return NextResponse.json(
+      { error: "Too many booking attempts. Please try again later." },
+      { status: 429 },
+    );
+  }
+
   try {
     const body = (await request.json()) as Record<string, unknown>;
     const result = createBooking({
       gameSlug: String(body.gameSlug ?? ""),
       date: String(body.date ?? ""),
       slotKey: String(body.slotKey ?? ""),
-      slotLabel: String(body.slotLabel ?? ""),
       kidCount: Number(body.kidCount),
-      subtotalInr: Number(body.subtotalInr),
-      discountInr: Number(body.discountInr ?? 0),
-      payableInr: Number(body.payableInr),
       couponCode: body.couponCode ? String(body.couponCode) : null,
       customerName: String(body.customerName ?? ""),
       phone: String(body.phone ?? ""),

@@ -16,7 +16,10 @@ const dmSans = DM_Sans({
   subsets: ["latin"],
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+
 export const metadata: Metadata = {
+  ...(siteUrl ? { metadataBase: new URL(siteUrl) } : {}),
   title: {
     default: `${site.name} | ${site.tagline} — ${site.area}`,
     template: `%s | ${site.name}`,

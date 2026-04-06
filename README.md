@@ -33,9 +33,11 @@ Multi-step flow backed by **live server state**:
    - **admin-created blocks** (per game / date / slot),
    - **full-day birthday hold** (when enabled for a date — all public slots show as unavailable for every game).
 4. **Waiver + contact + coupon** — Parent/guardian name, phone, optional email; participation waiver checkbox (legal copy TBD). **Coupon codes** from a prototype table (`GLOW10`, `ARENA15`, `FLAT50`, `FLAT100`, `KIDSFUN20`) applied to subtotal; normalized uppercase.
-5. **Confirm** — **`POST /api/bookings`** persists a **confirmed** booking with reference **`GA-XXXXXXXX`**, amounts, coupon code, and customer fields into **`web/data/arena-store.json`**.
+5. **Confirm** — **`POST /api/bookings`** persists a **confirmed** booking with reference **`GA-XXXXXXXX`**. **Subtotal, discount, and payable are calculated on the server** from catalog prices and `coupons.ts` (the client cannot forge amounts).
 
 **Payments:** Simulated only — no Razorpay or gateway.
+
+**Production-oriented behaviour:** Input validation (name / phone / email / notes lengths), **booking date window** (see `BOOKING_RULES.maxAdvanceDaysOnline`), **atomic JSON writes**, **per-IP rate limits** on booking and birthday POST, **`ADMIN_SECRET` required** when `NODE_ENV=production`, **security headers** (`next.config.ts`), **`robots.txt`** / **`sitemap.xml`** (set `NEXT_PUBLIC_SITE_URL`). See **`web/.env.example`**.
 
 ### Combos & coupons (logic)
 
@@ -92,7 +94,6 @@ Worth spelling out so expectations stay clear:
 
 - **No real payments**, emails, SMS, WhatsApp API, or CRM — lead forms are **mock**.
 - **Pricing and copy** on marketing pages are **placeholders** unless you replace them.
-- **Server trusts** booking line amounts from the client — **recalculate on the server** before production.
 - **Concurrent booking races** are only handled by “second write fails” — no transactional DB.
 - **Serverless deploys** (e.g. Vercel) often have **read-only or ephemeral disk** — JSON persistence may not survive; use a DB or KV for a hosted demo.
 - **Combos page** does not create a server-side “combo ticket”; only **single-game session bookings** are stored in `arena-store.json`.

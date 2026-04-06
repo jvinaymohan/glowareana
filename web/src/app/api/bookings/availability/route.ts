@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isDateWithinOnlineBookingWindow } from "@/lib/booking";
 import {
   computeSlotAvailability,
   isDateHeldForBirthdayParty,
@@ -11,6 +12,12 @@ export async function GET(request: NextRequest) {
   if (!gameSlug || !date) {
     return NextResponse.json(
       { error: "Missing game or date query params" },
+      { status: 400 },
+    );
+  }
+  if (!isDateWithinOnlineBookingWindow(date)) {
+    return NextResponse.json(
+      { error: "Date is outside the allowed booking window" },
       { status: 400 },
     );
   }

@@ -42,7 +42,12 @@ Create `web/.env.local` (optional):
 
 | Variable | Effect |
 |----------|--------|
-| `ADMIN_SECRET` | If set, admin **GET/POST/PATCH/DELETE** APIs require header `x-admin-secret: <same value>` (or `Authorization: Bearer …`). If **unset**, admin APIs are **open** (fine for local demos). |
+| `ADMIN_SECRET` | If set, admin **GET/POST/PATCH/DELETE** APIs require header `x-admin-secret: <same value>` (or `Authorization: Bearer …`). If **unset** in **development**, admin APIs are **open**. |
+| `NEXT_PUBLIC_SITE_URL` | Your public **https** origin (no trailing slash). Used for **sitemap**, **robots**, and **metadataBase**. If unset, `sitemap.xml` is empty and robots omit sitemap. |
+
+In **production** (`NODE_ENV=production`), **`ADMIN_SECRET` must be set** or admin APIs return **503**.
+
+Copy **`web/.env.example`** to **`web/.env.local`** and fill values for production.
 
 The `/admin` UI stores the secret in **localStorage** (`glowArenaAdminSecret`) after you type it and save — handy when `ADMIN_SECRET` is set.
 
@@ -76,10 +81,12 @@ The `/admin` UI stores the secret in **localStorage** (`glowArenaAdminSecret`) a
 
 **Payments:** Simulated only — no gateway.
 
-**Known limitations (acceptable for prototype):**
+**Server-side pricing:** Subtotal, discount, and payable are **computed on the server** from `site.ts` prices, kid count, and `coupons.ts`. The client only sends the coupon code string; amounts in the UI are for display and must match server rules.
 
-- Server trusts **subtotal / discount / payable** from the client — recalc on server before production.
+**Known limitations:**
+
 - No optimistic locking — two users could rarely race on the same slot; second POST gets an error.
+- In-memory **rate limits** on `POST /api/bookings` and `POST /api/birthday-requests` (per server instance only).
 
 ---
 
@@ -109,13 +116,13 @@ After load (and secret if required):
 
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
-| GET | `/api/bookings/availability?game=&date=` | No | Slot list + `birthdayPartyHold` |
-| POST | `/api/bookings` | No | Create booking |
+| GET | `/api/bookings/availability?game=&date=` | No | Slot list + `birthdayPartyHold` (date must be within booking window) |
+| POST | `/api/bookings` | No | Create booking (rate-limited; prices from server) |
 | GET | `/api/bookings?from=&to=&game=` | Admin if secret set | List bookings |
 | GET/POST | `/api/blocks` | Admin if secret set | List / add blocks |
 | DELETE | `/api/blocks?id=` | Admin if secret set | Remove block |
 | GET | `/api/admin/stats?from=&to=` | Admin if secret set | Revenue / counts |
-| GET/POST | `/api/birthday-requests` | GET: admin; POST: public | List / create |
+| GET/POST | `/api/birthday-requests` | GET: admin; POST: public (rate-limited) | List / create |
 | PATCH | `/api/birthday-requests` | Admin | Toggle `blocksPublicSlots` |
 
 ---
@@ -129,6 +136,8 @@ After load (and secret if required):
 5. **Coupon:** Apply `GLOW10` on `/book` → totals and stored booking discount look right.
 6. **Combos:** `/combos` pricing matches birthday combo logic for same selection (same `combo-pricing` module).
 7. **Secret:** Set `ADMIN_SECRET`, restart dev → `/admin` fails until secret saved → then works.
+8. **Bad coupon:** Submit booking with invalid code → **400** from API.
+9. **Tamper check:** Patching client to send wrong prices no longer affects stored booking (server recalculates).
 
 ---
 

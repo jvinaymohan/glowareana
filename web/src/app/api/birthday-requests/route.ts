@@ -7,6 +7,10 @@ import {
   type CreateBirthdayPartyInput,
 } from "@/lib/arena-store";
 import type { ComboSize } from "@/lib/combos";
+import {
+  allowBirthdayMutation,
+  clientKeyFromRequest,
+} from "@/lib/rate-limit";
 
 export async function GET(request: NextRequest) {
   const denied = requireAdmin(request);
@@ -30,6 +34,14 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const key = clientKeyFromRequest(request);
+  if (!allowBirthdayMutation(key)) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429 },
+    );
+  }
+
   try {
     const body = (await request.json()) as Record<string, unknown>;
     const comboSize = Number(body.comboSize) as ComboSize;

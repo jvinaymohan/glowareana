@@ -1,3 +1,5 @@
+import { parseYmd } from "@/lib/date-utils";
+
 /** Venue schedule: 15 min play + 5 min reset between groups. */
 export const BOOKING_RULES = {
   sessionMinutes: 15,
@@ -5,6 +7,8 @@ export const BOOKING_RULES = {
   dayStart: { hour: 10, minute: 0 },
   /** Last start so session + reset finishes by 8:00 PM close */
   lastSlotStart: { hour: 19, minute: 40 },
+  /** Server rejects booking dates beyond this many days from today (inclusive). */
+  maxAdvanceDaysOnline: 60,
 } as const;
 
 export function slotIntervalMinutes(): number {
@@ -65,6 +69,20 @@ export function generateDaySlots(): DaySlot[] {
 
 export function maxSlotsPerLanePerDay(): number {
   return generateDaySlots().length;
+}
+
+/** Today 00:00 through today + maxAdvanceDays (server local timezone). */
+export function isDateWithinOnlineBookingWindow(dateStr: string): boolean {
+  const parsed = parseYmd(dateStr);
+  if (!parsed) return false;
+  const today = new Date();
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const last = new Date(start);
+  last.setDate(last.getDate() + BOOKING_RULES.maxAdvanceDaysOnline);
+  const d = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+  if (d < start) return false;
+  if (d > last) return false;
+  return true;
 }
 
 /** Deterministic mock: some slots show as full for demo (replace with API). */
