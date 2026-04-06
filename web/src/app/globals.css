@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0b0b12;
+  --foreground: #f4f4f5;
+  --ga-lava: #ff4d2e;
+  --ga-orange: #ff9f1c;
+  --ga-blue: #00d4ff;
+  --ga-surface: #141420;
+  --ga-muted: #a1a1aa;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-dm);
+}
+
+/* Paint the root immediately so a refresh never flashes a blank white screen while chunks load */
+html {
+  min-height: 100%;
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+body {
+  min-height: 100%;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-dm), ui-sans-serif, system-ui, sans-serif;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--ga-lava) 45%, transparent);
+  color: #fff;
+}
+
+@keyframes ga-pulse-glow {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.03);
+  }
+}
+
+@keyframes ga-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.ga-hero-blob {
+  animation: ga-pulse-glow 8s ease-in-out infinite;
+}
+
+.ga-float {
+  animation: ga-float 5s ease-in-out infinite;
+}
+
+.ga-grid-bg {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
