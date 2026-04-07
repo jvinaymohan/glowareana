@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SiteLogo, SiteLogoLockup } from "@/components/SiteLogo";
 import { games, site } from "@/lib/site";
 
 export default function HomePage() {
@@ -14,11 +15,13 @@ export default function HomePage() {
 
         <div className="relative mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20 lg:py-24">
           <div className="max-w-3xl">
+            <div className="mb-8 flex justify-center sm:justify-start">
+              <SiteLogoLockup padding="hero" className="inline-block">
+                <SiteLogo variant="hero" priority />
+              </SiteLogoLockup>
+            </div>
             <p className="ga-tagline-colors text-sm font-bold uppercase tracking-[0.28em]">
               {site.brandTagline}
-            </p>
-            <p className="mt-3 text-sm font-semibold uppercase tracking-[0.2em] text-[var(--ga-cyan)] drop-shadow-[0_0_12px_rgba(0,240,255,0.4)]">
-              Koramangala · 3,000 SFT
             </p>
             <h1 className="mt-4 font-[family-name:var(--font-syne)] text-4xl font-extrabold leading-tight sm:text-5xl lg:text-6xl">
               <span className="text-white">Don&apos;t touch the </span>
@@ -26,32 +29,49 @@ export default function HomePage() {
               <span className="text-white">. </span>
               <span className="ga-text-glow">Own the arena.</span>
             </h1>
-            <p className="mt-6 max-w-xl text-lg text-zinc-400">
-              {site.name} is a premium indoor game zone — Floor is Lava, laser
-              mazes, push battles, and team showdowns. Built for families,
-              teens, birthdays, and crews who want their group chat to explode.
+            <p className="mt-5 max-w-xl text-lg leading-relaxed text-zinc-400">
+              Big neon energy, real games: lava floors, laser missions, push
+              battles, and team showdowns. For families who want a safe win,
+              kids who want bragging rights, and anyone who&apos;s done with
+              boring weekends.
+            </p>
+            <p className="mt-3 text-sm text-zinc-500">
+              {site.area} · Staff on every round · Ages 5+ (see each game)
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
                 href="/book"
-                className="ga-btn-neon ga-float inline-flex rounded-full px-6 py-3 text-sm font-semibold"
+                className="ga-btn-neon ga-float inline-flex min-h-[48px] min-w-[160px] items-center justify-center rounded-full px-8 py-3.5 text-base font-semibold shadow-[0_0_28px_rgba(255,45,140,0.35)] touch-manipulation active:brightness-95"
               >
                 Book now
               </Link>
               <Link
                 href="/games"
-                className="inline-flex rounded-full border border-[var(--ga-cyan)]/40 px-6 py-3 text-sm font-semibold text-[var(--ga-cyan)] shadow-[0_0_20px_rgba(0,240,255,0.15)] transition hover:border-[var(--ga-cyan)]/70 hover:bg-[var(--ga-cyan)]/10 hover:shadow-[0_0_28px_rgba(0,240,255,0.25)]"
+                className="inline-flex min-h-[48px] items-center justify-center rounded-full border border-[var(--ga-cyan)]/40 px-6 py-3 text-sm font-semibold text-[var(--ga-cyan)] shadow-[0_0_20px_rgba(0,240,255,0.15)] transition touch-manipulation hover:border-[var(--ga-cyan)]/70 hover:bg-[var(--ga-cyan)]/10 hover:shadow-[0_0_28px_rgba(0,240,255,0.25)] active:brightness-95"
               >
                 Explore games
               </Link>
             </div>
+            <p className="mt-4 max-w-md text-sm leading-relaxed text-zinc-500">
+              Tap Book now — then choose guest checkout (email or SMS
+              confirmation) or sign in to save visits on your phone.
+            </p>
           </div>
 
           <div className="mt-14 grid gap-4 sm:grid-cols-3">
             {[
-              { t: "Instagrammable", d: "Neon-lit sets made for reels." },
-              { t: "Safe & staffed", d: "Briefings, gear, and watchful hosts." },
-              { t: "Pure energy", d: "Competitive formats, zero boredom." },
+              {
+                t: "Safe & supervised",
+                d: "Staff on every session, gear checked, rules explained in plain language — parents stay relaxed.",
+              },
+              {
+                t: "Fun at every age",
+                d: "From first-time jumpers to teen crews: games scale so younger kids and older siblings both get a turn in the spotlight.",
+              },
+              {
+                t: "Parties & squads",
+                d: "Birthdays, school groups, or a Saturday with friends — fast rounds, big cheers, memories that stick.",
+              },
             ].map((x) => (
               <div key={x.t} className="ga-card-neon rounded-2xl p-5 backdrop-blur-sm">
                 <p className="font-[family-name:var(--font-syne)] text-lg font-bold text-[var(--ga-cyan)]">
@@ -220,11 +240,11 @@ export default function HomePage() {
           Find us
         </h2>
         <p className="mt-2 text-zinc-400">{site.address}</p>
-        <div className="mt-6 aspect-video w-full overflow-hidden rounded-2xl border border-[var(--ga-cyan)]/25 bg-zinc-900 shadow-[0_0_40px_rgba(0,240,255,0.12)]">
+        <div className="mt-6 min-h-[220px] w-full max-w-full overflow-hidden rounded-2xl border border-[var(--ga-cyan)]/25 bg-zinc-900 aspect-video shadow-[0_0_40px_rgba(0,240,255,0.12)] sm:min-h-0">
           <iframe
             title="Glow Arena location"
             src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d248849.84916296526!2d77.44109579999999!3d12.9539594!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bae145edc12ae15%3A0x5d6fa3f68c672c4e!2sKoramangala%2C%20Bengaluru%2C%20Karnataka!5e0!3m2!1sen!2sin!4v1710000000000!5m2!1sen!2sin"
-            className="h-full w-full border-0"
+            className="h-full min-h-[220px] w-full border-0 sm:min-h-0"
             loading="lazy"
             allowFullScreen
             referrerPolicy="no-referrer-when-downgrade"

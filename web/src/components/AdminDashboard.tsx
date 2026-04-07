@@ -294,22 +294,23 @@ export function AdminDashboard() {
   const daySlots = generateDaySlots();
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="font-[family-name:var(--font-syne)] text-3xl font-bold text-white">
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="font-[family-name:var(--font-syne)] text-2xl font-bold text-white sm:text-3xl">
             {site.name} admin
           </h1>
-          <p className="mt-1 text-sm text-zinc-500">
+          <p className="mt-1 break-words text-sm text-zinc-500">
             Bookings, blocks, revenue & people — local JSON store (
-            <code className="text-zinc-400">data/arena-store.json</code>).
+            <code className="break-all text-zinc-400">data/arena-store.json</code>
+            ).
           </p>
         </div>
         <button
           type="button"
           onClick={() => refresh()}
           disabled={busy}
-          className="rounded-full border border-white/20 px-4 py-2 text-sm text-white hover:bg-white/5 disabled:opacity-50"
+          className="min-h-[48px] shrink-0 rounded-full border border-white/20 px-5 py-2.5 text-sm text-white touch-manipulation hover:bg-white/5 disabled:opacity-50"
         >
           {busy ? "Loading…" : "Refresh data"}
         </button>
@@ -583,7 +584,7 @@ export function AdminDashboard() {
           </span>{" "}
           indicative
         </p>
-        <div className="mt-4 overflow-x-auto">
+        <div className="mt-4 -mx-1 overflow-x-auto overscroll-x-contain px-1 [touch-action:pan-x]">
           <table className="min-w-[960px] w-full text-left text-xs text-zinc-300">
             <thead className="border-b border-white/10 text-zinc-500">
               <tr>
@@ -702,7 +703,7 @@ export function AdminDashboard() {
             className="rounded-lg border border-white/10 bg-black/30 px-2 py-1 text-sm text-white"
           />
         </div>
-        <div className="mt-4 overflow-x-auto">
+        <div className="mt-4 -mx-1 overflow-x-auto overscroll-x-contain px-1 [touch-action:pan-x]">
           <table className="min-w-[900px] w-full text-left text-xs text-zinc-300">
             <thead className="border-b border-white/10 text-zinc-500">
               <tr>

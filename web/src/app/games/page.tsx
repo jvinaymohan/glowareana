@@ -9,14 +9,14 @@ export const metadata: Metadata = {
 
 export default function GamesPage() {
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
+    <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-16">
       <p className="text-sm font-semibold uppercase tracking-wider text-[var(--ga-orange)]">
         Attractions
       </p>
-      <h1 className="mt-2 font-[family-name:var(--font-syne)] text-4xl font-bold text-white">
+      <h1 className="mt-2 font-[family-name:var(--font-syne)] text-3xl font-bold leading-tight text-white sm:text-4xl">
         Every game is a main character
       </h1>
-      <p className="mt-4 max-w-2xl text-zinc-400">
+      <p className="mt-4 max-w-2xl text-base leading-relaxed text-zinc-400 sm:text-lg">
         Durations and pricing are sample numbers for this prototype — swap in
         your live rate card anytime.
       </p>
@@ -26,7 +26,7 @@ export default function GamesPage() {
           <article
             key={g.slug}
             id={g.slug}
-            className="grid gap-8 rounded-2xl border border-white/10 bg-[var(--ga-surface)] p-6 lg:grid-cols-[1fr_1.1fr] lg:p-8"
+            className="grid gap-6 rounded-2xl border border-white/10 bg-[var(--ga-surface)] p-4 sm:gap-8 sm:p-6 lg:grid-cols-[1fr_1.1fr] lg:p-8"
           >
             <div
               className={`flex min-h-[200px] items-center justify-center rounded-xl bg-gradient-to-br text-6xl ${
@@ -78,9 +78,9 @@ export default function GamesPage() {
               </dl>
               <Link
                 href={`/book?game=${g.slug}`}
-                className="mt-6 inline-flex rounded-full bg-gradient-to-r from-[var(--ga-lava)] to-[var(--ga-orange)] px-5 py-2 text-sm font-semibold text-[#0b0b12]"
+                className="mt-6 inline-flex min-h-[48px] items-center justify-center rounded-full bg-gradient-to-r from-[var(--ga-lava)] to-[var(--ga-orange)] px-6 py-3 text-sm font-semibold text-[#0b0b12] touch-manipulation active:brightness-95"
               >
-                Book this
+                Book now
               </Link>
             </div>
           </article>

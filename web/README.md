@@ -44,6 +44,9 @@ Create `web/.env.local` (optional):
 |----------|--------|
 | `ADMIN_SECRET` | If set, admin **GET/POST/PATCH/DELETE** APIs require header `x-admin-secret: <same value>` (or `Authorization: Bearer …`). If **unset** in **development**, admin APIs are **open**. |
 | `NEXT_PUBLIC_SITE_URL` | Your public **https** origin (no trailing slash). Used for **sitemap**, **robots**, and **metadataBase**. If unset, `sitemap.xml` is empty and robots omit sitemap. |
+| `RESEND_API_KEY` | Optional. If set with `BOOKING_FROM_EMAIL`, **`POST /api/bookings`** sends a **confirmation email** when the guest enables email confirmation. |
+| `BOOKING_FROM_EMAIL` | Optional. Resend **From** address (must be verified in Resend). Defaults to Resend’s test sender if unset. |
+| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` | Optional. If all set, **SMS confirmation** can be sent when the guest enables SMS. Trial accounts may only message verified numbers. |
 
 In **production** (`NODE_ENV=production`), **`ADMIN_SECRET` must be set** or admin APIs return **503**.
 
@@ -83,7 +86,7 @@ The `/admin` UI stores the secret in **localStorage** (`glowArenaAdminSecret`) a
 1. **Game** — one lane per game; each game has `maxKidsPerSession` (see `src/lib/site.ts`).
 2. **Kids** — count clamped to game limit.
 3. **Date & time** — next 7 days; slots from `src/lib/booking.ts` (15 min play + 5 min reset, 10:00–last start 19:40). Fetches **`GET /api/bookings/availability`**. Unavailable reasons: **booked**, **admin blocked**, **birthday hold** (whole day).
-4. **Waiver + details + coupon** — optional coupon; **Confirm** → **`POST /api/bookings`** → reference like `GA-XXXXXXXX`.
+4. **Account (optional), confirmation channels, waiver, details + coupon** — choose **email** and/or **SMS** confirmations (defaults on); **register / log in** is promoted before paying; **Confirm** → **`POST /api/bookings`** → reference like `GA-XXXXXXXX` plus **`notifications`** (email/SMS sent or skip reason if providers are not configured).
 
 **Coupons** (prototype table in `src/lib/coupons.ts`): `GLOW10`, `ARENA15`, `FLAT50`, `FLAT100`, `KIDSFUN20` (shown in UI). Codes are normalized to uppercase.
 

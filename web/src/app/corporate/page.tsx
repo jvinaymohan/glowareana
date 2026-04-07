@@ -10,14 +10,14 @@ export const metadata: Metadata = {
 
 export default function CorporatePage() {
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
+    <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-16">
       <p className="text-sm font-semibold uppercase tracking-wider text-[var(--ga-blue)]">
         Teams & groups
       </p>
-      <h1 className="mt-2 font-[family-name:var(--font-syne)] text-4xl font-bold text-white">
+      <h1 className="mt-2 font-[family-name:var(--font-syne)] text-3xl font-bold leading-tight text-white sm:text-4xl">
         Offsites that actually get people talking
       </h1>
-      <p className="mt-4 max-w-2xl text-zinc-400">
+      <p className="mt-4 max-w-2xl text-base leading-relaxed text-zinc-400 sm:text-lg">
         Structured team formats, private arena windows, and group pricing for
         startups, schools, and enterprise teams visiting Bangalore.
       </p>
@@ -55,10 +55,10 @@ export default function CorporatePage() {
         ))}
       </div>
 
-      <div className="mt-12 flex flex-wrap gap-3">
+      <div className="mt-12 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
         <Link
           href="/book"
-          className="rounded-full bg-gradient-to-r from-[var(--ga-lava)] to-[var(--ga-orange)] px-6 py-3 text-sm font-semibold text-[#0b0b12]"
+          className="inline-flex min-h-[48px] items-center justify-center rounded-full bg-gradient-to-r from-[var(--ga-lava)] to-[var(--ga-orange)] px-6 py-3 text-sm font-semibold text-[#0b0b12] touch-manipulation active:brightness-95"
         >
           Hold a slot
         </Link>
@@ -66,7 +66,7 @@ export default function CorporatePage() {
           href={`https://wa.me/${site.whatsapp}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="rounded-full border border-[#25D366]/40 px-6 py-3 text-sm font-semibold text-[#25D366] hover:bg-[#25D366]/10"
+          className="inline-flex min-h-[48px] items-center justify-center rounded-full border border-[#25D366]/40 px-6 py-3 text-sm font-semibold text-[#25D366] touch-manipulation hover:bg-[#25D366]/10"
         >
           WhatsApp sales
         </a>

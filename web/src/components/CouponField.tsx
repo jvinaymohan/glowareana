@@ -104,13 +104,13 @@ export function CouponField({ baseAmountInr, onTotalsChange }: CouponFieldProps)
           }}
           placeholder="e.g. GLOW10"
           autoComplete="off"
-          className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-white uppercase outline-none placeholder:text-zinc-600 focus:border-[var(--ga-blue)]"
+          className="min-h-[48px] min-w-0 flex-1 rounded-lg border border-white/10 bg-black/40 px-3 py-3 text-base text-white uppercase outline-none placeholder:text-zinc-600 focus:border-[var(--ga-blue)] sm:min-h-0 sm:py-2 sm:text-sm"
         />
         <div className="flex gap-2">
           <button
             type="button"
             onClick={handleApply}
-            className="rounded-lg bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/15"
+            className="min-h-[48px] flex-1 rounded-lg bg-white/10 px-4 py-2 text-sm font-medium text-white touch-manipulation hover:bg-white/15 sm:min-h-0 sm:flex-none"
           >
             Apply
           </button>
@@ -118,7 +118,7 @@ export function CouponField({ baseAmountInr, onTotalsChange }: CouponFieldProps)
             <button
               type="button"
               onClick={handleClear}
-              className="rounded-lg border border-white/15 px-4 py-2 text-sm text-zinc-400 hover:text-white"
+              className="min-h-[48px] rounded-lg border border-white/15 px-4 py-2 text-sm text-zinc-400 touch-manipulation hover:text-white sm:min-h-0"
             >
               Remove
             </button>

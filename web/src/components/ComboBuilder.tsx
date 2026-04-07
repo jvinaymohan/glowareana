@@ -61,8 +61,8 @@ export function ComboBuilder() {
   }
 
   return (
-    <div className="grid gap-10 lg:grid-cols-[1fr_340px]">
-      <div className="space-y-6">
+    <div className="grid min-w-0 gap-8 lg:grid-cols-[1fr_340px] lg:gap-10">
+      <div className="min-w-0 space-y-6">
         <div>
           <h2 className="font-[family-name:var(--font-syne)] text-lg font-bold text-white">
             1. Combo size & discount
@@ -77,7 +77,7 @@ export function ComboBuilder() {
                 key={n}
                 type="button"
                 onClick={() => setSize(n)}
-                className={`rounded-xl border px-4 py-3 text-left transition ${
+                className={`min-h-[52px] rounded-xl border px-4 py-3 text-left transition touch-manipulation active:brightness-95 ${
                   comboSize === n
                     ? "border-[var(--ga-orange)] bg-[var(--ga-orange)]/15"
                     : "border-white/10 hover:border-white/25"
@@ -111,7 +111,7 @@ export function ComboBuilder() {
                   type="button"
                   disabled={disabled}
                   onClick={() => toggleGame(g.slug)}
-                  className={`rounded-xl border px-4 py-3 text-left transition ${
+                  className={`min-h-[56px] rounded-xl border px-4 py-3 text-left transition touch-manipulation active:brightness-95 ${
                     on
                       ? "border-[var(--ga-blue)] bg-[var(--ga-blue)]/10"
                       : disabled
@@ -152,13 +152,13 @@ export function ComboBuilder() {
                 if (Number.isNaN(v)) return;
                 setParticipants(Math.min(50, Math.max(1, v)));
               }}
-              className="mt-1 w-32 rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-white outline-none focus:border-[var(--ga-blue)]"
+              className="mt-1 min-h-[48px] w-full max-w-[200px] rounded-lg border border-white/10 bg-black/30 px-3 py-3 text-base text-white outline-none focus:border-[var(--ga-blue)] sm:min-h-0 sm:w-32 sm:py-2 sm:text-sm"
             />
           </label>
         </div>
       </div>
 
-      <aside className="h-fit space-y-4 rounded-2xl border border-white/10 bg-[var(--ga-surface)] p-6 lg:sticky lg:top-24">
+      <aside className="h-fit min-w-0 space-y-4 rounded-2xl border border-white/10 bg-[var(--ga-surface)] p-4 sm:p-6 lg:sticky lg:top-24">
         <h3 className="font-[family-name:var(--font-syne)] text-lg font-bold text-white">
           Your combo
         </h3>
@@ -238,13 +238,13 @@ export function ComboBuilder() {
           onClick={(e) => {
             if (!complete) e.preventDefault();
           }}
-          className={`block w-full rounded-full py-3 text-center text-sm font-semibold ${
+          className={`block w-full min-h-[52px] rounded-full py-3.5 text-center text-base font-semibold touch-manipulation sm:py-3 sm:text-sm ${
             complete
-              ? "bg-gradient-to-r from-[var(--ga-lava)] to-[var(--ga-orange)] text-[#0b0b12]"
+              ? "bg-gradient-to-r from-[var(--ga-lava)] to-[var(--ga-orange)] text-[#0b0b12] active:brightness-95"
               : "cursor-not-allowed bg-white/10 text-zinc-500"
           }`}
         >
-          Book combo (next step)
+          Book now
         </Link>
       </aside>
     </div>

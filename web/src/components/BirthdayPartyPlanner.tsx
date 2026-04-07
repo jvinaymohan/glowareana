@@ -127,7 +127,7 @@ export function BirthdayPartyPlanner() {
             setDoneRef(null);
             setError(null);
           }}
-          className="mt-6 rounded-full border border-white/20 px-6 py-2 text-sm text-white hover:bg-white/5"
+          className="mt-6 min-h-[48px] rounded-full border border-white/20 px-6 py-3 text-sm text-white touch-manipulation hover:bg-white/5"
         >
           Plan another party
         </button>
@@ -138,9 +138,9 @@ export function BirthdayPartyPlanner() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="grid gap-10 lg:grid-cols-[1fr_340px]"
+      className="grid min-w-0 gap-8 lg:grid-cols-[1fr_340px] lg:gap-10"
     >
-      <div className="space-y-8">
+      <div className="min-w-0 space-y-8">
         <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-zinc-400">
           Birthday parties use a <strong className="text-zinc-200">simple planner</strong>
           : kids, <strong className="text-zinc-200">game combo</strong> (same
@@ -334,7 +334,7 @@ export function BirthdayPartyPlanner() {
         ) : null}
       </div>
 
-      <aside className="h-fit space-y-4 rounded-2xl border border-white/10 bg-[var(--ga-surface)] p-6 lg:sticky lg:top-24">
+      <aside className="h-fit min-w-0 space-y-4 rounded-2xl border border-white/10 bg-[var(--ga-surface)] p-4 sm:p-6 lg:sticky lg:top-24">
         <h3 className="font-[family-name:var(--font-syne)] text-lg font-bold text-white">
           Estimate summary
         </h3>
@@ -383,7 +383,7 @@ export function BirthdayPartyPlanner() {
         <button
           type="submit"
           disabled={submitting || !lines.complete || !kidsOk}
-          className="w-full rounded-full bg-gradient-to-r from-[var(--ga-lava)] to-[var(--ga-orange)] py-3 text-sm font-semibold text-[#0b0b12] disabled:cursor-not-allowed disabled:opacity-40"
+          className="w-full min-h-[52px] rounded-full bg-gradient-to-r from-[var(--ga-lava)] to-[var(--ga-orange)] py-3.5 text-base font-semibold text-[#0b0b12] touch-manipulation disabled:cursor-not-allowed disabled:opacity-40 sm:py-3 sm:text-sm active:enabled:brightness-95"
         >
           {submitting ? "Sending…" : "Submit birthday request"}
         </button>

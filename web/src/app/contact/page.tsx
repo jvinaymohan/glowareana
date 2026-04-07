@@ -9,11 +9,11 @@ export const metadata: Metadata = {
 
 export default function ContactPage() {
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
-      <h1 className="font-[family-name:var(--font-syne)] text-4xl font-bold text-white">
+    <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-16">
+      <h1 className="font-[family-name:var(--font-syne)] text-3xl font-bold leading-tight text-white sm:text-4xl">
         Let&apos;s talk
       </h1>
-      <p className="mt-4 text-zinc-400">
+      <p className="mt-4 text-base leading-relaxed text-zinc-400">
         Reach the arena team — swap in your real number and WhatsApp Business
         link.
       </p>
@@ -35,7 +35,7 @@ export default function ContactPage() {
               href={`https://wa.me/${site.whatsapp}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-2 inline-flex rounded-full bg-[#25D366] px-5 py-2 text-sm font-semibold text-[#0b0b12]"
+              className="mt-2 inline-flex min-h-[48px] items-center justify-center rounded-full bg-[#25D366] px-5 py-3 text-sm font-semibold text-[#0b0b12] touch-manipulation active:brightness-95"
             >
               Open WhatsApp chat
             </a>
@@ -62,11 +62,11 @@ export default function ContactPage() {
         </div>
       </div>
 
-      <div className="mt-12 aspect-video overflow-hidden rounded-2xl border border-white/10">
+      <div className="mt-12 min-h-[220px] w-full max-w-full overflow-hidden rounded-2xl border border-white/10 aspect-video sm:min-h-0">
         <iframe
           title="Glow Arena map"
           src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d248849.84916296526!2d77.44109579999999!3d12.9539594!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bae145edc12ae15%3A0x5d6fa3f68c672c4e!2sKoramangala%2C%20Bengaluru%2C%20Karnataka!5e0!3m2!1sen!2sin!4v1710000000000!5m2!1sen!2sin"
-          className="h-full w-full border-0"
+          className="h-full min-h-[220px] w-full border-0 sm:min-h-0"
           loading="lazy"
           allowFullScreen
           referrerPolicy="no-referrer-when-downgrade"

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSessionUserId } from "@/lib/auth-session";
 import { requireAdmin } from "@/lib/admin-auth";
 import { createBooking, readStore } from "@/lib/arena-store";
+import { deliverBookingNotifications } from "@/lib/booking-notify";
+import { requireEmailForAuth } from "@/lib/input-validation";
 import {
   allowBookingMutation,
   clientKeyFromRequest,
@@ -38,6 +40,21 @@ export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as Record<string, unknown>;
     const sessionUserId = await getSessionUserId();
+    const notifyEmail =
+      body.notifyEmail === undefined ? true : Boolean(body.notifyEmail);
+    const notifySms =
+      body.notifySms === undefined ? true : Boolean(body.notifySms);
+
+    const emailRaw = String(body.email ?? "");
+    let emailForBooking = emailRaw;
+    if (notifyEmail) {
+      const emailRes = requireEmailForAuth(emailRaw);
+      if (!emailRes.ok) {
+        return NextResponse.json({ error: emailRes.error }, { status: 400 });
+      }
+      emailForBooking = emailRes.value;
+    }
+
     const result = createBooking({
       gameSlug: String(body.gameSlug ?? ""),
       date: String(body.date ?? ""),
@@ -46,13 +63,18 @@ export async function POST(request: NextRequest) {
       couponCode: body.couponCode ? String(body.couponCode) : null,
       customerName: String(body.customerName ?? ""),
       phone: String(body.phone ?? ""),
-      email: String(body.email ?? ""),
+      email: emailForBooking,
       userId: sessionUserId ?? null,
     });
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 400 });
     }
-    return NextResponse.json({ booking: result.booking });
+
+    const notifications = await deliverBookingNotifications(result.booking, {
+      email: notifyEmail,
+      sms: notifySms,
+    });
+    return NextResponse.json({ booking: result.booking, notifications });
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }

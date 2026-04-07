@@ -94,12 +94,12 @@ export const games: Game[] = [
   },
 ];
 
+/** Book lives only on the header CTA — avoids duplicate “Book now” in the nav bar. */
 export const nav = [
   { href: "/", label: "Home" },
   { href: "/games", label: "Games" },
   { href: "/combos", label: "Combos" },
   { href: "/birthday", label: "Birthdays" },
   { href: "/corporate", label: "Corporate" },
-  { href: "/book", label: "Book" },
   { href: "/contact", label: "Contact" },
 ] as const;

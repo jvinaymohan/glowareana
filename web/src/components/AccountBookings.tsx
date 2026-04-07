@@ -235,7 +235,7 @@ export function AccountBookings() {
         <p className="text-zinc-500">
           No reservations yet.{" "}
           <Link href="/book" className="text-[var(--ga-cyan)] hover:underline">
-            Book a session
+            Book now
           </Link>
           — log in first to link bookings to this account.
         </p>

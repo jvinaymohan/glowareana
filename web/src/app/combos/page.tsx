@@ -10,14 +10,14 @@ export const metadata: Metadata = {
 
 export default function CombosPage() {
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
+    <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-16">
       <p className="text-sm font-semibold uppercase tracking-wider text-[var(--ga-orange)]">
         Multi-game passes
       </p>
-      <h1 className="mt-2 font-[family-name:var(--font-syne)] text-4xl font-bold text-white">
+      <h1 className="mt-2 font-[family-name:var(--font-syne)] text-3xl font-bold leading-tight text-white sm:text-4xl">
         Stack games. Stack savings.
       </h1>
-      <p className="mt-4 max-w-2xl text-zinc-400">
+      <p className="mt-4 max-w-2xl text-base leading-relaxed text-zinc-400 sm:text-lg">
         Pick any {COMBO_SIZES[0]}–{COMBO_SIZES[COMBO_SIZES.length - 1]} games in
         one pass — discounts apply to the total per-person price:{" "}
         <span className="text-zinc-200">

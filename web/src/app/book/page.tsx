@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { BookingPrototype } from "@/components/BookingPrototype";
+import { SiteLogo, SiteLogoLockup } from "@/components/SiteLogo";
 import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Book a session",
+  title: "Book now",
   description: `Book ${site.name} — select games, time slots, and pay online (prototype flow).`,
 };
 
@@ -14,18 +15,27 @@ export default async function BookPage({
 }) {
   const { game } = await searchParams;
   return (
-    <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 sm:py-16">
-      <p className="text-sm font-semibold uppercase tracking-wider text-[var(--ga-lava)]">
-        Booking prototype
+    <div className="mx-auto max-w-3xl px-4 pb-8 pt-8 sm:px-6 sm:pb-12 sm:pt-12">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
+        <SiteLogoLockup className="w-fit shrink-0 self-center sm:self-start">
+          <SiteLogo variant="compact" />
+        </SiteLogoLockup>
+        <div className="min-w-0 flex-1 text-center sm:text-left">
+          <h1 className="font-[family-name:var(--font-syne)] text-3xl font-bold leading-tight text-white sm:text-4xl">
+            Book a session
+          </h1>
+          <p className="mt-2 text-xs font-medium uppercase tracking-wider text-zinc-500">
+            {site.name}
+          </p>
+        </div>
+      </div>
+      <p className="mt-6 max-w-2xl text-base leading-relaxed text-zinc-400">
+        Pick a game and time, then add parent details. We send your{" "}
+        <strong className="font-medium text-zinc-300">booking reference by email or SMS</strong>{" "}
+        — easy to find on your phone. Sign in first if you want everything saved
+        under one account.
       </p>
-      <h1 className="mt-2 font-[family-name:var(--font-syne)] text-4xl font-bold text-white">
-        Lock your slot
-      </h1>
-      <p className="mt-4 text-zinc-400">
-        This flow demonstrates UX only — no payments or emails are sent. Next
-        step: wire Razorpay, inventory rules, and confirmation webhooks.
-      </p>
-      <div className="mt-10">
+      <div className="mt-8 sm:mt-10">
         <BookingPrototype initialGameSlug={game} />
       </div>
     </div>

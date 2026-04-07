@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { bookingAuthHref } from "@/lib/booking-auth";
 import {
   BOOKING_RULES,
   generateDaySlots,
@@ -14,8 +16,13 @@ import { games } from "@/lib/site";
 
 type Step = 1 | 2 | 3 | 4;
 
+/** Persists guest choice so refresh mid-flow doesn’t re-show the entry gate. */
+const SESSION_GUEST_KEY = "ga_book_guest_v1";
+
 const DAY_SLOTS = generateDaySlots();
 const MAX_SLOTS = maxSlotsPerLanePerDay();
+
+type BookingEntry = "loading" | "gate" | "flow";
 
 function addDays(base: Date, n: number) {
   const d = new Date(base);
@@ -36,6 +43,13 @@ type BookingPrototypeProps = {
 };
 
 type SessionUser = { id: string; email: string; phone: string };
+
+type BookingNotifications = {
+  emailSent: boolean;
+  smsSent: boolean;
+  emailMessage?: string;
+  smsMessage?: string;
+};
 
 export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
   const validInitial =
@@ -68,6 +82,12 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [confirmedRef, setConfirmedRef] = useState<string | null>(null);
   const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
+  const [notifyEmail, setNotifyEmail] = useState(true);
+  const [notifySms, setNotifySms] = useState(true);
+  const [notifyStatus, setNotifyStatus] = useState<BookingNotifications | null>(
+    null,
+  );
+  const [bookingEntry, setBookingEntry] = useState<BookingEntry>("loading");
 
   const selectedGame = useMemo(
     () => games.find((g) => g.slug === gameId) ?? games[0],
@@ -95,12 +115,34 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
           setSessionUser(d.user);
           setEmail((prev) => prev || d.user!.email);
           setPhone((prev) => prev || d.user!.phone);
+          setBookingEntry("flow");
+          return;
+        }
+        try {
+          setBookingEntry(
+            sessionStorage.getItem(SESSION_GUEST_KEY) === "1"
+              ? "flow"
+              : "gate",
+          );
+        } catch {
+          setBookingEntry("gate");
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        try {
+          setBookingEntry(
+            sessionStorage.getItem(SESSION_GUEST_KEY) === "1"
+              ? "flow"
+              : "gate",
+          );
+        } catch {
+          setBookingEntry("gate");
+        }
+      });
   }, []);
 
   useEffect(() => {
+    if (bookingEntry !== "flow") return;
     const ac = new AbortController();
     setSlotsLoading(true);
     setSlotsError(null);
@@ -142,7 +184,7 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
       })
       .finally(() => setSlotsLoading(false));
     return () => ac.abort();
-  }, [gameId, dateStr]);
+  }, [gameId, dateStr, bookingEntry]);
 
   const availableCount = availability.filter((s) => s.available).length;
 
@@ -175,6 +217,45 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
             Saved to the arena booking store. Razorpay can be added for real
             payments; see admin for slots and revenue.
           </p>
+          {notifyStatus ? (
+            <div className="mx-auto mt-6 max-w-sm rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-left text-sm">
+              <p className="font-medium text-zinc-300">Confirmation delivery</p>
+              <ul className="mt-2 space-y-1.5 text-zinc-400">
+                <li>
+                  {notifyStatus.emailSent ? (
+                    <span className="text-emerald-400/90">
+                      Email confirmation sent
+                    </span>
+                  ) : notifyStatus.emailMessage ? (
+                    <span>
+                      Email:{" "}
+                      <span className="text-zinc-500">
+                        {notifyStatus.emailMessage}
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="text-zinc-500">Email not requested</span>
+                  )}
+                </li>
+                <li>
+                  {notifyStatus.smsSent ? (
+                    <span className="text-emerald-400/90">
+                      Text message confirmation sent
+                    </span>
+                  ) : notifyStatus.smsMessage ? (
+                    <span>
+                      SMS:{" "}
+                      <span className="text-zinc-500">
+                        {notifyStatus.smsMessage}
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="text-zinc-500">SMS not requested</span>
+                  )}
+                </li>
+              </ul>
+            </div>
+          ) : null}
           <dl className="mx-auto mt-6 max-w-sm space-y-2 text-left text-sm">
             <div className="flex justify-between gap-4 border-b border-white/10 py-2">
               <dt className="text-zinc-500">Experience</dt>
@@ -228,8 +309,17 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
               setPhone("");
               setEmail("");
               setSubmitError(null);
+              setNotifyEmail(true);
+              setNotifySms(true);
+              setNotifyStatus(null);
+              try {
+                sessionStorage.removeItem(SESSION_GUEST_KEY);
+              } catch {
+                /* ignore */
+              }
+              setBookingEntry(sessionUser ? "flow" : "gate");
             }}
-            className="mt-8 rounded-full border border-white/20 px-6 py-2 text-sm font-medium text-white hover:bg-white/5"
+            className="mt-8 min-h-[48px] rounded-full border border-white/20 px-6 py-3 text-sm font-medium text-white touch-manipulation hover:bg-white/5"
           >
             Start over
           </button>
@@ -238,9 +328,73 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
     );
   }
 
+  if (bookingEntry === "loading") {
+    return (
+      <div className="rounded-2xl border border-white/10 bg-[var(--ga-surface)] p-6 sm:p-8">
+        <div className="h-2 animate-pulse rounded-full bg-white/10" />
+        <div className="mt-8 h-40 animate-pulse rounded-xl bg-white/5" />
+      </div>
+    );
+  }
+
+  if (bookingEntry === "gate") {
+    return (
+      <div className="rounded-2xl border border-white/10 bg-[var(--ga-surface)] p-5 sm:p-8">
+        <h2 className="font-[family-name:var(--font-syne)] text-xl font-bold text-white sm:text-2xl">
+          How do you want to book?
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+          Choose one — both options finish on this screen. Use a real email or
+          phone so we can send your confirmation.
+        </p>
+        <div className="mt-6 flex flex-col gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              try {
+                sessionStorage.setItem(SESSION_GUEST_KEY, "1");
+              } catch {
+                /* ignore */
+              }
+              setBookingEntry("flow");
+            }}
+            className="flex w-full flex-col items-start rounded-2xl border border-[var(--ga-orange)]/40 bg-gradient-to-br from-[var(--ga-lava)]/15 to-[var(--ga-orange)]/10 px-4 py-4 text-left transition touch-manipulation active:brightness-95 sm:min-h-[56px] sm:px-5 sm:py-5"
+          >
+            <span className="text-base font-semibold text-white">
+              Continue as guest
+            </span>
+            <span className="mt-1 text-sm text-zinc-400">
+              No password. We&apos;ll email or text your booking reference at the
+              end.
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              window.location.href = bookingAuthHref();
+            }}
+            className="flex w-full flex-col items-start rounded-2xl border border-white/15 bg-black/30 px-4 py-4 text-left transition touch-manipulation hover:border-white/25 active:brightness-95 sm:min-h-[56px] sm:px-5 sm:py-5"
+          >
+            <span className="text-base font-semibold text-white">
+              Sign in or create account
+            </span>
+            <span className="mt-1 text-sm text-zinc-500">
+              Then you&apos;re back here to pick your slot — faster next time &
+              easy rescheduling.
+            </span>
+          </button>
+        </div>
+        <p className="mt-5 text-center text-xs text-zinc-600">
+          Tip on mobile: add your email carefully — that&apos;s where we send the
+          receipt.
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="rounded-2xl border border-white/10 bg-[var(--ga-surface)] p-6 sm:p-8">
-      <div className="mb-6 flex gap-2">
+    <div className="rounded-2xl border border-white/10 bg-[var(--ga-surface)] p-5 sm:p-8">
+      <div className="mb-5 flex gap-2 sm:mb-6">
         {([1, 2, 3, 4] as const).map((s) => (
           <div
             key={s}
@@ -251,7 +405,22 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
         ))}
       </div>
 
-      <p className="mb-6 rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-xs text-zinc-400">
+      {sessionUser ? (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--ga-cyan)]/25 bg-[var(--ga-cyan)]/5 px-4 py-3 text-sm text-zinc-300">
+          <span>
+            Signed in as{" "}
+            <strong className="text-white">{sessionUser.email}</strong>
+          </span>
+          <Link
+            href="/account"
+            className="min-h-[44px] shrink-0 content-center font-medium text-[var(--ga-blue)] hover:underline"
+          >
+            My bookings
+          </Link>
+        </div>
+      ) : null}
+
+      <p className="mb-5 rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-xs leading-relaxed text-zinc-400 sm:mb-6">
         Each game is <strong className="text-zinc-200">15 minutes</strong> of
         play. We block{" "}
         <strong className="text-zinc-200">
@@ -299,7 +468,7 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
           <button
             type="button"
             onClick={() => setStep(2)}
-            className="w-full rounded-full bg-gradient-to-r from-[var(--ga-lava)] to-[var(--ga-orange)] py-3 text-sm font-semibold text-[#0b0b12] sm:w-auto sm:px-8"
+            className="w-full min-h-[48px] rounded-full bg-gradient-to-r from-[var(--ga-lava)] to-[var(--ga-orange)] py-3.5 text-base font-semibold text-[#0b0b12] touch-manipulation active:brightness-95 sm:w-auto sm:px-10 sm:text-sm"
           >
             Continue
           </button>
@@ -344,11 +513,11 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
               Enter between 1 and {selectedGame.maxKidsPerSession} kids.
             </p>
           ) : null}
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => setStep(1)}
-              className="rounded-full border border-white/20 px-5 py-2 text-sm text-white hover:bg-white/5"
+              className="min-h-[48px] rounded-full border border-white/20 px-5 py-2.5 text-sm text-white touch-manipulation hover:bg-white/5"
             >
               Back
             </button>
@@ -356,7 +525,7 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
               type="button"
               disabled={!kidsValid}
               onClick={() => setStep(3)}
-              className="rounded-full bg-gradient-to-r from-[var(--ga-lava)] to-[var(--ga-orange)] px-6 py-2 text-sm font-semibold text-[#0b0b12] disabled:cursor-not-allowed disabled:opacity-40"
+              className="min-h-[48px] flex-1 rounded-full bg-gradient-to-r from-[var(--ga-lava)] to-[var(--ga-orange)] px-6 py-2.5 text-sm font-semibold text-[#0b0b12] touch-manipulation disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"
             >
               Pick a time
             </button>
@@ -460,11 +629,11 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
               );
             })}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => setStep(2)}
-              className="rounded-full border border-white/20 px-5 py-2 text-sm text-white hover:bg-white/5"
+              className="min-h-[48px] rounded-full border border-white/20 px-5 py-2.5 text-sm text-white touch-manipulation hover:bg-white/5"
             >
               Back
             </button>
@@ -474,7 +643,7 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
                 !currentSlotOpen || slotsLoading || birthdayPartyHold
               }
               onClick={() => setStep(4)}
-              className="rounded-full bg-gradient-to-r from-[var(--ga-lava)] to-[var(--ga-orange)] px-6 py-2 text-sm font-semibold text-[#0b0b12] disabled:cursor-not-allowed disabled:opacity-40"
+              className="min-h-[48px] flex-1 rounded-full bg-gradient-to-r from-[var(--ga-lava)] to-[var(--ga-orange)] px-6 py-2.5 text-sm font-semibold text-[#0b0b12] touch-manipulation disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"
             >
               Continue
             </button>
@@ -485,31 +654,57 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
       {step === 4 && (
         <div className="space-y-4">
           <h2 className="font-[family-name:var(--font-syne)] text-xl font-bold text-white">
-            Waiver & pay
+            Confirm your booking
           </h2>
           {sessionUser ? (
             <p className="rounded-lg border border-[var(--ga-cyan)]/30 bg-[var(--ga-cyan)]/10 px-4 py-3 text-sm text-zinc-300">
-              Signed in as{" "}
-              <strong className="text-white">{sessionUser.email}</strong>. Use
-              the same phone as on your account (
+              Use the same phone as on your account (
               <span className="font-mono text-zinc-400">{sessionUser.phone}</span>
-              ) so we can link this booking and reach you on WhatsApp.
+              ) so we link this booking and can reach you on WhatsApp.
             </p>
           ) : (
-            <p className="text-sm text-zinc-500">
-              <a href="/login" className="text-[var(--ga-blue)] hover:underline">
-                Log in
-              </a>{" "}
-              or{" "}
-              <a
-                href="/register"
-                className="text-[var(--ga-blue)] hover:underline"
-              >
-                register
-              </a>{" "}
-              to save reservations under your account and reschedule anytime.
+            <p className="text-sm leading-relaxed text-zinc-400">
+              Your booking reference is sent to the{" "}
+              <strong className="font-medium text-zinc-300">email</strong> and{" "}
+              <strong className="font-medium text-zinc-300">phone</strong> you
+              enter below — keep them accurate on mobile.
             </p>
           )}
+          <div className="rounded-xl border border-white/10 p-4">
+            <p className="text-sm font-medium text-zinc-200">
+              Send confirmation
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+              Toggle off if you don&apos;t want that channel. Email needs a valid
+              address; SMS uses your phone in international format (e.g. +91…).
+            </p>
+            <label className="mt-3 flex cursor-pointer items-start gap-3">
+              <input
+                type="checkbox"
+                checked={notifyEmail}
+                onChange={(e) => setNotifyEmail(e.target.checked)}
+                className="mt-0.5 size-4 rounded border-white/30 accent-[var(--ga-lava)]"
+              />
+              <span className="text-sm text-zinc-300">
+                Email confirmation{" "}
+                <span className="text-zinc-500">(requires a valid email)</span>
+              </span>
+            </label>
+            <label className="mt-2 flex cursor-pointer items-start gap-3">
+              <input
+                type="checkbox"
+                checked={notifySms}
+                onChange={(e) => setNotifySms(e.target.checked)}
+                className="mt-0.5 size-4 rounded border-white/30 accent-[var(--ga-lava)]"
+              />
+              <span className="text-sm text-zinc-300">
+                Text message (SMS) to your phone{" "}
+                <span className="text-zinc-500">
+                  (uses the number below; E.164 format)
+                </span>
+              </span>
+            </label>
+          </div>
           <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 p-4">
             <input
               type="checkbox"
@@ -546,20 +741,27 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
               <input
                 required
                 type="tel"
+                inputMode="tel"
+                autoComplete="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-white outline-none focus:border-[var(--ga-blue)]"
+                className="mt-1 min-h-[48px] w-full rounded-lg border border-white/10 bg-black/30 px-3 py-3 text-base text-white outline-none focus:border-[var(--ga-blue)] sm:min-h-0 sm:py-2 sm:text-sm"
                 placeholder="+91 …"
               />
             </label>
             <label className="block text-sm text-zinc-400 sm:col-span-2">
-              Email
+              Email {notifyEmail ? <span className="text-[var(--ga-orange)]">*</span> : null}
               <input
                 type="email"
+                inputMode="email"
+                required={notifyEmail}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-white outline-none focus:border-[var(--ga-blue)]"
-                placeholder="optional"
+                className="mt-1 min-h-[48px] w-full rounded-lg border border-white/10 bg-black/30 px-3 py-3 text-base text-white outline-none focus:border-[var(--ga-blue)] sm:min-h-0 sm:py-2 sm:text-sm"
+                placeholder={
+                  notifyEmail ? "you@example.com" : "optional if no email copy"
+                }
+                autoComplete="email"
               />
             </label>
           </div>
@@ -609,7 +811,7 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
               type="button"
               onClick={() => setStep(3)}
               disabled={submitting}
-              className="rounded-full border border-white/20 px-5 py-2 text-sm text-white hover:bg-white/5 disabled:opacity-40"
+              className="min-h-[48px] rounded-full border border-white/20 px-5 py-2.5 text-sm text-white touch-manipulation hover:bg-white/5 disabled:opacity-40"
             >
               Back
             </button>
@@ -619,6 +821,7 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
                 !waiver ||
                 !customerName.trim() ||
                 !phone.trim() ||
+                (notifyEmail && !email.trim()) ||
                 submitting
               }
               onClick={async () => {
@@ -648,6 +851,8 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
                       customerName: customerName.trim(),
                       phone: phone.trim(),
                       email: email.trim(),
+                      notifyEmail,
+                      notifySms,
                     }),
                   });
                   const j = await r.json().catch(() => ({}));
@@ -659,6 +864,13 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
                   const ref = (j as { booking?: { reference?: string } }).booking
                     ?.reference;
                   setConfirmedRef(ref ?? null);
+                  const n = (j as { notifications?: BookingNotifications })
+                    .notifications;
+                  setNotifyStatus(
+                    n && typeof n.emailSent === "boolean" && typeof n.smsSent === "boolean"
+                      ? n
+                      : null,
+                  );
                   setDone(true);
                 } catch (e) {
                   setSubmitError(
@@ -668,9 +880,9 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
                   setSubmitting(false);
                 }
               }}
-              className="rounded-full bg-[var(--ga-blue)] px-6 py-2 text-sm font-semibold text-[#0b0b12] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+              className="min-h-[48px] flex-1 rounded-full bg-[var(--ga-blue)] px-6 py-3 text-sm font-semibold text-[#0b0b12] touch-manipulation hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none sm:py-2.5"
             >
-              {submitting ? "Saving…" : "Confirm booking (simulated pay)"}
+              {submitting ? "Saving…" : "Confirm booking"}
             </button>
           </div>
         </div>
