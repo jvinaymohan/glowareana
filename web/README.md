@@ -1,22 +1,93 @@
-# Glow Arena — prototype reference
+# Glow Arena — web application
 
-Next.js app for marketing, **live slot booking** (file-backed), **combo pricing**, **coupons**, **birthday enquiries** with optional **full-day venue hold**, and an **admin dashboard**. Use this doc when testing with stakeholders.
+Next.js app: **public marketing**, **platform v2** (PostgreSQL, Prisma, multi-store ops), and optional **legacy** file-backed booking for `/book` and `/admin`. Mobile-first UI (touch targets, safe areas, beta banner).
 
 **Repository:** [github.com/jvinaymohan/glowarena](https://github.com/jvinaymohan/glowarena)
 
-## Quick start
+---
+
+## Product docs (GitHub)
+
+| Doc | Description |
+|-----|-------------|
+| [docs/PRODUCT_REQUIREMENTS.md](docs/PRODUCT_REQUIREMENTS.md) | Full **PRD** (personas, functional requirements, launch criteria). |
+| [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md) | **Done vs remaining** vs PRD; production checklist. |
+| [docs/DEMO_AND_LAUNCH.md](docs/DEMO_AND_LAUNCH.md) | Environment variables, demo URLs, rate limits / report caps. |
+| [docs/RAZORPAY.md](docs/RAZORPAY.md) | **Razorpay:** keys, webhook, Checkout, troubleshooting. |
+| [../README.md](../README.md) | **Repo overview** with persona × capability tables. |
+
+---
+
+## What the platform supports (by persona)
+
+Summarizes **v2** + **legacy** routes. RBAC and store scoping are enforced on **`/api/v2/admin/*`** and **`/api/v2/customer/*`**.
+
+### Guest / parent (not logged in)
+
+- Marketing: `/`, `/games`, `/combos`, `/birthday`, `/corporate`, `/contact`, legal `/legal/*`.
+- **Legacy** booking wizard: `/book` (JSON store + `POST /api/bookings`) unless `DISABLE_LEGACY_BOOKING=1`.
+- **v2** public catalog: `GET /api/v2/public/stores`, `GET /api/v2/public/availability`.
+
+### Customer (logged in, v2)
+
+- **Portal:** `/platform/customer` — auth, load availability by date, create **reservation**, list/reservations with pagination, **loyalty** summary, optional **pay online** when `NEXT_PUBLIC_RAZORPAY_ENABLED=1`.
+- **APIs:** `/api/v2/customer/auth/*`, `reservations`, `loyalty`, `payments/razorpay/order`, etc.
+
+### Front desk, floor supervisor, cash / POS
+
+- **Hub:** `/platform/admin` → operations, calendar, arena day.
+- **Check-in/out**, walk-ins, record payments, move slot, block slots (per RBAC).
+- **Time clock:** punch in/out; **shifts:** view coverage; managers/owners create or delete shifts.
+- **Staff page:** `/platform/admin/staff` — time clock tab; schedule tab (assignments, “mine” filter).
+
+### Store manager
+
+- Everything front desk has, plus **store-scoped** reporting, coupons/promotions, **hire/update staff** (within role rules), **schedule shifts**, **payroll** lines, **arena games** edit (up to **5 active** games per store).
+
+### Owner / HQ
+
+- **Multi-store** access when linked; full **games** catalog control per arena; **team & payroll**; **executive** exports (PDF/XLSX); dashboard and reports.
+
+### Finance / support (baseline)
+
+- **Finance:** ledger visibility via admin APIs and exports; **salary** records and mark-paid in staff hub.
+- **Support:** tickets/incidents/approvals APIs and POC surfaces; dangerous actions limited by role.
+
+---
+
+## Feature modules (v2)
+
+| Module | Highlights |
+|--------|------------|
+| **Identity** | Platform admin JWT (`/api/v2/admin/auth/*`); customer JWT (`/api/v2/customer/auth/*`). |
+| **Catalog** | Stores, venues, games, slots; slot modes; **max 5 active games** per store (admin games API). |
+| **Reservations** | Conflict handling, reschedule, admin move-slot, walk-ins, booking types for reporting. |
+| **Payments** | Ledger, manual methods, Razorpay order + webhook when configured. |
+| **Loyalty** | Punches, tiers, reward coupons on check-out (idempotent). |
+| **Workforce** | Staff CRUD (multi-store), shifts, time clock, payroll rows. |
+| **Reporting** | Summary, CSV, PDF, XLSX (window/row limits documented in DEMO_AND_LAUNCH). |
+
+---
+
+## Quick start (PostgreSQL)
+
+From **`web/`**:
 
 ```bash
-cd web
+docker compose up -d
+cp .env.example .env.local # set DATABASE_URL, AUTH_SECRET, ADMIN_SECRET, etc.
+npx prisma generate
+npx prisma migrate deploy
+npm run prisma:seed          # optional: KORA store + demo users
 npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Dev server uses webpack (`npm run dev`) for stable HMR.
+Open [http://localhost:3000](http://localhost:3000). Default **`npm run dev`** uses **webpack**; **`npm run dev:turbo`** uses Turbopack.
 
 ```bash
 npm run build   # production build
-npm run start   # serve on port 3000 (after build)
+npm run start   # serve on port 3000
 ```
 
 **Node:** `>= 20.9.0`
@@ -25,152 +96,92 @@ npm run start   # serve on port 3000 (after build)
 
 ## Data & persistence
 
-| Item | Location |
-|------|----------|
-| Bookings, blocks, birthday requests | `web/data/arena-store.json` |
-| Created automatically | On first read/write |
+| Layer | Location | Notes |
+|-------|----------|--------|
+| **Platform v2** | PostgreSQL via `DATABASE_URL` | Source of truth for reservations, catalog, loyalty, staff, shifts, ledger. |
+| **Legacy booking** | `web/data/arena-store.json` (gitignored) | Used by `/book`, legacy `/admin`, and `POST /api/bookings` unless disabled. |
 
-The file is **gitignored** so local test data is not committed. Delete it anytime to reset.
-
-**Serverless / read-only FS:** JSON writes will fail. For production, replace the store with a database or hosted KV.
+For production, use **Postgres only** for v2 and set **`DISABLE_LEGACY_BOOKING=1`** when legacy paths are retired.
 
 ---
 
 ## Environment
 
-Create `web/.env.local` (optional):
+Create **`web/.env.local`**. Copy from **[`.env.example`](.env.example)**.
 
-| Variable | Effect |
-|----------|--------|
-| `ADMIN_SECRET` | If set, admin **GET/POST/PATCH/DELETE** APIs require header `x-admin-secret: <same value>` (or `Authorization: Bearer …`). If **unset** in **development**, admin APIs are **open**. |
-| `NEXT_PUBLIC_SITE_URL` | Your public **https** origin (no trailing slash). Used for **sitemap**, **robots**, and **metadataBase**. If unset, `sitemap.xml` is empty and robots omit sitemap. |
-| `RESEND_API_KEY` | Optional. If set with `BOOKING_FROM_EMAIL`, **`POST /api/bookings`** sends a **confirmation email** when the guest enables email confirmation. |
-| `BOOKING_FROM_EMAIL` | Optional. Resend **From** address (must be verified in Resend). Defaults to Resend’s test sender if unset. |
-| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` | Optional. If all set, **SMS confirmation** can be sent when the guest enables SMS. Trial accounts may only message verified numbers. |
-
-In **production** (`NODE_ENV=production`), **`ADMIN_SECRET` must be set** or admin APIs return **503**.
-
-Copy **`web/.env.example`** to **`web/.env.local`** and fill values for production.
-
-The `/admin` UI stores the secret in **localStorage** (`glowArenaAdminSecret`) after you type it and save — handy when `ADMIN_SECRET` is set.
+Important variables include: `DATABASE_URL`, `AUTH_SECRET`, `ADMIN_SECRET`, `DISABLE_LEGACY_BOOKING`, `NEXT_PUBLIC_SITE_URL`, optional `NEXT_PUBLIC_RAZORPAY_ENABLED` and Razorpay keys. Full tables: **[`.env.example`](.env.example)** and **[docs/DEMO_AND_LAUNCH.md](docs/DEMO_AND_LAUNCH.md)**.
 
 ---
 
-## Customer accounts (email + phone)
+## Legacy: customer accounts (`/login`, `/account`)
 
-- **`/register`** — email, phone, password (min 8). Phone is stored as **E.164** (e.g. `+919876543210`) for **WhatsApp** (`wa.me/919876543210` without `+`).
-- **`/login`** — email **or** phone + password. Session cookie (**httpOnly**, 14 days). Set **`AUTH_SECRET`** in production (see `.env.example`).
-- **`/account`** — list bookings linked to the account; **reschedule** (same game, new date/slot) via **`PATCH /api/bookings/[id]`**.
-- **Booking while logged in** — `POST /api/bookings` attaches **`userId`** if the phone on the booking **matches** the account phone (canonical).
-- **Guest bookings** — still allowed; phone on the row is the WhatsApp key. If the guest later **logs in with the same phone**, they can **reschedule** those rows (matched by phone until linked).
-
-## Public pages (marketing + flows)
-
-| Route | What it does |
-|-------|----------------|
-| `/` | Home, games teaser, birthday/corporate CTAs, map placeholder |
-| `/games` | All games, detail copy, link to book |
-| `/combos` | **ComboBuilder** — pick 2–5 games, tiered % discount, optional coupon, link to book (no server save) |
-| `/birthday` | Packages + **BirthdayPartyPlanner** — POSTs to API, optional **reserve full day** for public booking |
-| `/corporate` | Positioning + **LeadForm** (client-only; does not POST) |
-| `/contact` | **LeadForm** (client-only) |
-| `/book` | **BookingPrototype** — 4-step flow, live availability, coupons, POST booking |
-| `/book?game=floor-is-lava` | Same flow with game pre-selected (any valid `games[].slug`) |
-
-**Lead forms:** Submit shows a thank-you state only — **no email/CRM** wired (stated in UI).
+- **`/login`** — Sign in / create account; session cookie; `?next=/path`, `?mode=signup`.
+- **`/register`** — Redirects to `/login?mode=signup`.
+- **`/account`** — Bookings linked to account; reschedule via **`PATCH /api/bookings/[id]`** (legacy API).
 
 ---
 
-## Booking flow (`/book`)
+## Legacy: public marketing + `/book`
 
-1. **Game** — one lane per game; each game has `maxKidsPerSession` (see `src/lib/site.ts`).
-2. **Kids** — count clamped to game limit.
-3. **Date & time** — next 7 days; slots from `src/lib/booking.ts` (15 min play + 5 min reset, 10:00–last start 19:40). Fetches **`GET /api/bookings/availability`**. Unavailable reasons: **booked**, **admin blocked**, **birthday hold** (whole day).
-4. **Account (optional), confirmation channels, waiver, details + coupon** — choose **email** and/or **SMS** confirmations (defaults on); **register / log in** is promoted before paying; **Confirm** → **`POST /api/bookings`** → reference like `GA-XXXXXXXX` plus **`notifications`** (email/SMS sent or skip reason if providers are not configured).
+| Route | Role |
+|-------|------|
+| `/` | Home |
+| `/games`, `/combos`, `/birthday`, `/corporate`, `/contact` | Marketing + forms |
+| `/book` | **BookingPrototype** — guest gate, game/kids/date/confirm; **`POST /api/bookings`** |
 
-**Coupons** (prototype table in `src/lib/coupons.ts`): `GLOW10`, `ARENA15`, `FLAT50`, `FLAT100`, `KIDSFUN20` (shown in UI). Codes are normalized to uppercase.
+Coupons (legacy): e.g. `GLOW10`, `ARENA15` in `src/lib/coupons.ts`. **Payments:** simulated on legacy path (no gateway in that flow).
 
-**Payments:** Simulated only — no gateway.
-
-**Server-side pricing:** Subtotal, discount, and payable are **computed on the server** from `site.ts` prices, kid count, and `coupons.ts`. The client only sends the coupon code string; amounts in the UI are for display and must match server rules.
-
-**Known limitations:**
-
-- No optimistic locking — two users could rarely race on the same slot; second POST gets an error.
-- In-memory **rate limits** on `POST /api/bookings` and `POST /api/birthday-requests` (per server instance only).
+**Known limitations (legacy):** rare slot race (second POST **400**); rate limits on booking/birthday POSTs.
 
 ---
 
-## Birthday flow (`/birthday`)
+## Legacy: admin (`/admin`)
 
-- Builds a **combo** (size + games) + optional **return gifts** (fee per kid in `src/lib/birthday-config.ts`).
-- **`POST /api/birthday-requests`** (public, no admin secret).
-- If **preferred date** is valid (`YYYY-MM-DD`) and **“Reserve venue”** is on (default), `blocksPublicSlots` is true → **all public slot booking** for that calendar day returns **birthday hold** (all games).
-
-Admin can toggle hold per request via dashboard (PATCH).
+- **`/admin/login`** when `ADMIN_SECRET` set.
+- Bookings, blocks, birthdays, stats, CSV export — backed by **`arena-store.json`**.
 
 ---
 
-## Admin (`/admin`)
-
-After load (and secret if required):
-
-- **Date range** — filters bookings, blocks, birthday list.
-- **Stats** — separate from/to for revenue summary (`GET /api/admin/stats`).
-- **Slot blocks** — block one game + date + slot (`POST /api/blocks`), remove (`DELETE /api/blocks?id=`).
-- **Birthday requests** — table + **Venue hold** toggle (`PATCH /api/birthday-requests`).
-- **Bookings table** — upcoming filter, **Export CSV**.
-
----
-
-## API summary
+## API summary (legacy — file store)
 
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
-| GET | `/api/bookings/availability?game=&date=` | No | Slot list + `birthdayPartyHold` (date must be within booking window) |
-| POST | `/api/bookings` | No | Create booking (rate-limited; prices from server) |
-| GET | `/api/bookings?from=&to=&game=` | Admin if secret set | List bookings |
-| GET/POST | `/api/blocks` | Admin if secret set | List / add blocks |
-| DELETE | `/api/blocks?id=` | Admin if secret set | Remove block |
-| GET | `/api/admin/stats?from=&to=` | Admin if secret set | Revenue / counts |
-| GET/POST | `/api/birthday-requests` | GET: admin; POST: public (rate-limited) | List / create |
-| PATCH | `/api/birthday-requests` | Admin | Toggle `blocksPublicSlots` |
-| POST | `/api/auth/register` | No | Create user + session (rate-limited) |
-| POST | `/api/auth/login` | No | Session (rate-limited) |
-| POST | `/api/auth/logout` | No | Clear session |
-| GET | `/api/auth/me` | No | Current user or `null` |
-| GET | `/api/my/bookings` | Session | List user’s bookings |
-| PATCH | `/api/bookings/[id]` | Session | Reschedule own booking |
+| GET | `/api/bookings/availability?game=&date=` | No | Slots + birthday hold flag |
+| POST | `/api/bookings` | No | Create booking (rate-limited); disabled if `DISABLE_LEGACY_BOOKING=1` |
+| GET | `/api/bookings?from=&to=&game=` | Admin if secret | List |
+| GET/POST | `/api/blocks` | Admin | Blocks |
+| DELETE | `/api/blocks?id=` | Admin | Remove block |
+| GET | `/api/admin/stats?from=&to=` | Admin | Stats |
+| POST | `/api/admin/login` | No | Admin session |
+| POST | `/api/admin/logout` | No | Clear session |
+| GET/POST/PATCH | `/api/birthday-requests` | Mixed | Birthday enquiries |
+| POST | `/api/auth/register`, `/api/auth/login`, `/api/auth/logout` | No | Customer session |
+| GET | `/api/auth/me` | No | Current user |
+| GET | `/api/my/bookings` | Session | User bookings |
+| PATCH | `/api/bookings/[id]` | Session | Reschedule |
+
+**v2 APIs** are under **`/api/v2/public/*`**, **`/api/v2/customer/*`**, **`/api/v2/admin/*`**, **`/api/v2/payments/*`** — see PRD §7 and source under `src/app/api/v2/`.
 
 ---
 
 ## Suggested test checklist
 
-1. **Booking:** Complete `/book` → confirm **reference** → see row in `/admin`.
-2. **Slot conflict:** Book a slot twice (two browsers) → second should **400** with friendly error.
-3. **Admin block:** Block a slot → it disappears from availability for that game/date.
-4. **Birthday hold:** Submit birthday with date + reserve on → `/book` that day shows **full-day hold**; toggle off in admin → slots return.
-5. **Coupon:** Apply `GLOW10` on `/book` → totals and stored booking discount look right.
-6. **Combos:** `/combos` pricing matches birthday combo logic for same selection (same `combo-pricing` module).
-7. **Secret:** Set `ADMIN_SECRET`, restart dev → `/admin` fails until secret saved → then works.
-8. **Bad coupon:** Submit booking with invalid code → **400** from API.
-9. **Tamper check:** Patching client to send wrong prices no longer affects stored booking (server recalculates).
+1. **v2:** `docker compose up` → migrate → seed → `/platform/customer` book flow → `/platform/admin` check-in/out.
+2. **Legacy booking:** `/book` guest flow → row in `/admin` (if legacy enabled).
+3. **Razorpay:** only with keys + `NEXT_PUBLIC_RAZORPAY_ENABLED=1`.
+4. **Beta banner:** dismiss persistence; `NEXT_PUBLIC_SHOW_BETA_BANNER=0`.
 
 ---
 
 ## Key source files
 
-- `src/lib/site.ts` — venue copy, **games**, prices, `maxKidsPerSession`
-- `src/lib/booking.ts` — slot generation, schedule rules
-- `src/lib/arena-store.ts` — JSON read/write, booking/block/birthday rules, stats
-- `src/lib/combos.ts`, `combo-pricing.ts` — combo discounts
-- `src/lib/coupons.ts` — coupon definitions
-- `src/lib/admin-auth.ts` — admin gate
-- `src/components/BookingPrototype.tsx`, `BirthdayPartyPlanner.tsx`, `ComboBuilder.tsx`, `AdminDashboard.tsx`
+- **Platform:** `src/lib/platform/*`, `prisma/schema.prisma`, `src/app/api/v2/**`
+- **Legacy:** `src/lib/arena-store.ts`, `src/lib/booking.ts`, `src/components/BookingPrototype.tsx`, `src/components/AdminDashboard.tsx`
+- **Shared:** `src/lib/site.ts`, `src/components/SiteHeader.tsx`, `SiteFooter.tsx`, `SiteLogo.tsx`
 
 ---
 
 ## Brand assets
 
 - Logo: `public/glow-arena-logo.png`
-- Neon theme tokens: `src/app/globals.css` (`:root` + `.ga-*` utilities)
+- Theme: `src/app/globals.css`

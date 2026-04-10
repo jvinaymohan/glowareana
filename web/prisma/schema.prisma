@@ -1,0 +1,738 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AdminRoleName {
+  OWNER
+  STORE_MANAGER
+  EMPLOYEE
+  FLOOR_SUPERVISOR
+  CASH_POS_USER
+  ADMIN_SUPPORT
+}
+
+enum ReservationStatus {
+  CONFIRMED
+  CHECKED_IN
+  CHECKED_OUT
+  RESCHEDULED
+  CANCELLED
+}
+
+enum BookingLifecycle {
+  CREATED
+  PAID
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PARTIAL
+  PAID
+  REFUNDED
+}
+
+enum PaymentType {
+  CHARGE
+  REFUND
+  ADJUSTMENT
+}
+
+enum DiscountType {
+  PERCENT
+  FIXED
+}
+
+enum CouponState {
+  ACTIVE
+  INACTIVE
+}
+
+enum PromotionState {
+  ACTIVE
+  INACTIVE
+  SCHEDULED
+  ENDED
+}
+
+enum CheckEventType {
+  CHECK_IN
+  CHECK_OUT
+}
+
+enum ExpenseCategory {
+  RENT
+  UTILITIES
+  MAINTENANCE
+  MARKETING
+  PAYROLL
+  SUPPLIES
+  OTHER
+}
+
+enum SlotAccessMode {
+  ONLINE_ONLY
+  WALK_IN_ONLY
+  MIXED
+}
+
+enum BookingType {
+  STANDARD
+  BIRTHDAY
+  CORPORATE
+}
+
+enum GameSlotStatus {
+  OPEN
+  BLOCKED
+  CLOSED
+}
+
+enum ApprovalType {
+  DISCOUNT
+  REFUND
+  PRICING_CHANGE
+  CORPORATE_HOLD
+  MEMBERSHIP
+}
+
+enum ApprovalState {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum IncidentSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ShiftDutyRole {
+  FLOOR
+  CASH_POS
+  SUPPORT
+  MANAGER_ON_DUTY
+  GENERAL
+}
+
+enum LoyaltyTier {
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+}
+
+enum SalaryRecordStatus {
+  SCHEDULED
+  PAID
+}
+
+model User {
+  id                String               @id @default(cuid())
+  email             String               @unique
+  phone             String?
+  name              String?
+  passwordHash      String
+  isActive          Boolean              @default(true)
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  createdBy         String?
+  reservations      Reservation[]
+  reservationUsers  ReservationUser[]
+  couponUsages      CouponUsage[]
+  promotionUsages   PromotionUsage[]
+  userLoyalties     UserLoyalty[]
+  loyaltyEvents     LoyaltyEvent[]
+  loyaltyRewards    LoyaltyReward[]
+}
+
+model AdminUser {
+  id           String            @id @default(cuid())
+  email        String            @unique
+  name         String
+  passwordHash String
+  isActive     Boolean           @default(true)
+  roleId       String
+  role         Role              @relation(fields: [roleId], references: [id])
+  stores       AdminUserStore[]
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  createdBy    String?
+  shiftAssignments     ShiftAssignment[]
+  ticketsAuthored      SupportTicket[]   @relation("TicketAuthor")
+  ticketsAssigned      SupportTicket[]   @relation("TicketAssignee")
+  ticketComments       TicketComment[]
+  incidentsReported    Incident[]
+  timeClockEntries     TimeClockEntry[]
+  approvalsRequested   ApprovalRequest[] @relation("ApprovalRequester")
+  approvalsResolved    ApprovalRequest[] @relation("ApprovalResolver")
+  salaryRecords        Salary[]
+}
+
+model Role {
+  id          String        @id @default(cuid())
+  name        AdminRoleName @unique
+  description String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  createdBy   String?
+  adminUsers  AdminUser[]
+}
+
+model AdminUserStore {
+  id          String    @id @default(cuid())
+  adminUserId String
+  storeId     String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdBy   String?
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  store       Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([adminUserId, storeId])
+}
+
+model Store {
+  id             String          @id @default(cuid())
+  code           String          @unique
+  name           String
+  timezone       String          @default("Asia/Kolkata")
+  currency       String          @default("INR")
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  createdBy      String?
+  reservations   Reservation[]
+  payments       Payment[]
+  coupons        Coupon[]
+  couponUsages   CouponUsage[]
+  promotions     Promotion[]
+  promotionUsages PromotionUsage[]
+  expenses       Expense[]
+  salaries       Salary[]
+  checkEvents    CheckInOutEvent[]
+  auditLogs      AuditLog[]
+  adminUsers     AdminUserStore[]
+  venues         Venue[]
+  games          Game[]
+  gameSlots      GameSlot[]
+  userLoyalties    UserLoyalty[]
+  loyaltyEvents    LoyaltyEvent[]
+  loyaltyRewards   LoyaltyReward[]
+  approvalRequests ApprovalRequest[]
+  shifts           Shift[]
+  supportTickets   SupportTicket[]
+  incidents        Incident[]
+  timeClockEntries TimeClockEntry[]
+}
+
+model Venue {
+  id            String   @id @default(cuid())
+  storeId       String
+  name          String
+  capacity      Int
+  openingHours  String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdBy     String?
+  lastModifiedBy String?
+  store         Store    @relation(fields: [storeId], references: [id], onDelete: Restrict)
+}
+
+model Game {
+  id            String   @id @default(cuid())
+  storeId       String
+  /** Display order within the arena (1–5 for standard arenas). */
+  sortOrder     Int      @default(0)
+  name          String
+  maxPerSlot    Int
+  durationMin   Int
+  ageMin        Int
+  ageMax        Int
+  basePrice     Int
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdBy     String?
+  lastModifiedBy String?
+  store         Store    @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  slots         GameSlot[]
+  supportTickets SupportTicket[]
+
+  @@index([storeId, sortOrder])
+}
+
+model GameSlot {
+  id             String         @id @default(cuid())
+  storeId        String
+  gameId         String
+  date           DateTime
+  timeLabel      String
+  availableSlots Int
+  status         GameSlotStatus @default(OPEN)
+  slotMode       SlotAccessMode @default(MIXED)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  createdBy      String?
+  lastModifiedBy String?
+  store          Store          @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  game           Game           @relation(fields: [gameId], references: [id], onDelete: Restrict)
+  reservations   Reservation[]
+  incidents Incident[]
+
+  @@unique([gameId, date, timeLabel])
+}
+
+model Reservation {
+  id                 String             @id @default(cuid())
+  reference          String             @unique
+  storeId            String
+  userId             String?
+  date               DateTime
+  startAt            DateTime
+  endAt              DateTime
+  status             ReservationStatus  @default(CONFIRMED)
+  lifecycle          BookingLifecycle   @default(CREATED)
+  paymentStatus      PaymentStatus      @default(PENDING)
+  gameSlotId         String?
+  adults             Int                @default(1)
+  children           Int                @default(0)
+  ageRange           String?
+  safetyConsent      Boolean            @default(false)
+  waiverConsent      Boolean            @default(false)
+  slotMode           SlotAccessMode     @default(MIXED)
+  bookingChannel     String             @default("online")
+  bookingType        BookingType        @default(STANDARD)
+  participantCount   Int                @default(1)
+  subtotalAmount     Int
+  discountAmount     Int                @default(0)
+  gstRateBps         Int                @default(0)
+  gstAmount          Int                @default(0)
+  invoiceRef         String?
+  taxAmount          Int                @default(0)
+  totalAmount        Int
+  paidAmount         Int                @default(0)
+  balanceAmount      Int
+  notes              String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  createdBy          String?
+  updatedBy          String?
+  lastModifiedBy     String?
+  store              Store              @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  user               User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  gameSlot           GameSlot?          @relation(fields: [gameSlotId], references: [id], onDelete: SetNull)
+  reservationUsers   ReservationUser[]
+  bookingParticipants BookingParticipant[]
+  webhookEvents      PaymentWebhookEvent[]
+  payments           Payment[]
+  couponUsages       CouponUsage[]
+  promotionUsages    PromotionUsage[]
+  checkEvents        CheckInOutEvent[]
+  audits             AuditLog[]
+  approvalRequests   ApprovalRequest[]
+  supportTickets     SupportTicket[]
+  incidents          Incident[]
+}
+
+model ReservationUser {
+  id             String       @id @default(cuid())
+  reservationId  String
+  userId         String?
+  name           String
+  email          String?
+  phone          String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  createdBy      String?
+  reservation    Reservation  @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  user           User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model Payment {
+  id             String        @id @default(cuid())
+  reservationId  String
+  storeId        String
+  type           PaymentType   @default(CHARGE)
+  status         PaymentStatus @default(PENDING)
+  amount         Int
+  method         String?
+  currency       String        @default("INR")
+  razorpayPaymentId String?
+  externalRef    String?       @unique
+  notes          String?
+  capturedAt     DateTime?
+  paidAt         DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  createdBy      String?
+  reservation    Reservation   @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  store          Store         @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  webhookEvents  PaymentWebhookEvent[]
+  lineItems      PaymentLineItem[]
+}
+
+model PaymentLineItem {
+  id          String   @id @default(cuid())
+  paymentId   String
+  description String
+  quantity    Int      @default(1)
+  unitAmount  Int
+  payment     Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+}
+
+model ApprovalRequest {
+  id             String         @id @default(cuid())
+  storeId        String
+  type           ApprovalType
+  state          ApprovalState @default(PENDING)
+  title          String
+  notes          String?
+  payloadJson    String         @default("{}")
+  amountCents    Int?
+  reservationId  String?
+  requestedById  String
+  resolvedById   String?
+  resolvedAt     DateTime?
+  resolutionNote String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  store          Store          @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  reservation    Reservation?   @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+  requestedBy    AdminUser      @relation("ApprovalRequester", fields: [requestedById], references: [id], onDelete: Restrict)
+  resolvedBy     AdminUser?     @relation("ApprovalResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+}
+
+model Shift {
+  id        String   @id @default(cuid())
+  storeId   String
+  startsAt  DateTime
+  endsAt    DateTime
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  assignments ShiftAssignment[]
+}
+
+model ShiftAssignment {
+  id          String        @id @default(cuid())
+  shiftId     String
+  adminUserId String
+  dutyRole    ShiftDutyRole @default(GENERAL)
+  createdAt   DateTime      @default(now())
+  shift       Shift         @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  adminUser   AdminUser     @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@unique([shiftId, adminUserId])
+}
+
+model SupportTicket {
+  id            String         @id @default(cuid())
+  storeId       String
+  subject       String
+  body          String
+  status        TicketStatus   @default(OPEN)
+  priority      TicketPriority @default(MEDIUM)
+  createdById   String
+  assigneeId    String?
+  reservationId String?
+  gameId        String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  closedAt      DateTime?
+  store         Store          @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  createdBy     AdminUser      @relation("TicketAuthor", fields: [createdById], references: [id], onDelete: Restrict)
+  assignee      AdminUser?     @relation("TicketAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  reservation   Reservation?   @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+  game          Game?          @relation(fields: [gameId], references: [id], onDelete: SetNull)
+  comments      TicketComment[]
+}
+
+model TicketComment {
+  id        String        @id @default(cuid())
+  ticketId  String
+  authorId  String
+  body      String
+  createdAt DateTime      @default(now())
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author    AdminUser     @relation(fields: [authorId], references: [id], onDelete: Restrict)
+}
+
+model Incident {
+  id            String           @id @default(cuid())
+  storeId       String
+  title         String
+  description   String
+  severity      IncidentSeverity @default(MEDIUM)
+  reservationId String?
+  gameSlotId    String?
+  reportedById  String
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  store         Store            @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  reservation   Reservation?     @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+  gameSlot      GameSlot?        @relation(fields: [gameSlotId], references: [id], onDelete: SetNull)
+  reportedBy    AdminUser        @relation(fields: [reportedById], references: [id], onDelete: Restrict)
+}
+
+model TimeClockEntry {
+  id          String    @id @default(cuid())
+  storeId     String
+  adminUserId String
+  clockInAt   DateTime
+  clockOutAt  DateTime?
+  note        String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  store       Store     @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Restrict)
+}
+
+model PaymentWebhookEvent {
+  id                String   @id @default(cuid())
+  provider          String
+  eventId           String   @unique
+  eventType         String
+  reservationId     String?
+  paymentId         String?
+  payloadJson       String
+  processedAt       DateTime?
+  processingError   String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  createdBy         String?
+  reservation       Reservation? @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+  payment           Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+}
+
+model Coupon {
+  id                 String       @id @default(cuid())
+  storeId            String?
+  code               String       @unique
+  discountType       DiscountType
+  discountValue      Int
+  maxDiscountAmount  Int?
+  expiresAt          DateTime?
+  usageLimit         Int?
+  usedCount          Int          @default(0)
+  state              CouponState  @default(ACTIVE)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  createdBy          String?
+  store              Store?       @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  usages             CouponUsage[]
+  loyaltyReward      LoyaltyReward?
+}
+
+model UserLoyalty {
+  id                   String      @id @default(cuid())
+  userId               String
+  storeId              String
+  punchesOnCard        Int         @default(0)
+  lifetimeCheckouts    Int         @default(0)
+  tier                 LoyaltyTier @default(BRONZE)
+  totalRewardsEarned   Int         @default(0)
+  lastCheckoutAt       DateTime?
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+  user                 User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store                Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, storeId])
+}
+
+model LoyaltyEvent {
+  id             String   @id @default(cuid())
+  userId         String
+  storeId        String
+  reservationId  String?
+  kind           String
+  punchAfter     Int
+  metaJson       String?
+  createdAt      DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store          Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+}
+
+model LoyaltyReward {
+  id            String    @id @default(cuid())
+  userId        String
+  storeId       String
+  couponId      String    @unique
+  reservationId String?
+  createdAt     DateTime  @default(now())
+  redeemedAt    DateTime?
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store         Store     @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  coupon        Coupon    @relation(fields: [couponId], references: [id], onDelete: Restrict)
+}
+
+model CouponUsage {
+  id             String       @id @default(cuid())
+  couponId       String
+  reservationId  String
+  userId         String?
+  storeId        String
+  discountAmount Int
+  usedAt         DateTime     @default(now())
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  createdBy      String?
+  coupon         Coupon       @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  reservation    Reservation  @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  user           User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  store          Store        @relation(fields: [storeId], references: [id], onDelete: Restrict)
+}
+
+model Promotion {
+  id                String          @id @default(cuid())
+  storeId           String?
+  name              String
+  description       String?
+  state             PromotionState  @default(SCHEDULED)
+  startAt           DateTime
+  endAt             DateTime
+  eligibilityRule   String?
+  discountRule      String
+  influencedRevenue Int             @default(0)
+  influencedBookings Int            @default(0)
+  redemptions       Int             @default(0)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  createdBy         String?
+  store             Store?          @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  usages            PromotionUsage[]
+}
+
+model PromotionUsage {
+  id             String       @id @default(cuid())
+  promotionId    String
+  reservationId  String
+  userId         String?
+  storeId        String
+  discountAmount Int
+  usedAt         DateTime     @default(now())
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  createdBy      String?
+  promotion      Promotion    @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  reservation    Reservation  @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  user           User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  store          Store        @relation(fields: [storeId], references: [id], onDelete: Restrict)
+}
+
+model Expense {
+  id             String          @id @default(cuid())
+  storeId        String
+  category       ExpenseCategory
+  title          String
+  amount         Int
+  gstAmount      Int             @default(0)
+  isRecurring    Boolean         @default(false)
+  recurringRule  String?
+  expenseDate    DateTime
+  notes          String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  createdBy      String?
+  lastModifiedBy String?
+  store          Store           @relation(fields: [storeId], references: [id], onDelete: Restrict)
+}
+
+model BookingParticipant {
+  id             String      @id @default(cuid())
+  reservationId  String
+  name           String
+  age            Int
+  consentType    String
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  createdBy      String?
+  lastModifiedBy String?
+  reservation    Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+}
+
+model Salary {
+  id             String             @id @default(cuid())
+  storeId        String
+  /** Optional link to platform staff (multi-arena via AdminUser.stores). */
+  adminUserId    String?
+  employeeName   String
+  amount         Int
+  payPeriodStart DateTime
+  payPeriodEnd   DateTime
+  payoutDate     DateTime?
+  status         SalaryRecordStatus @default(SCHEDULED)
+  isRecurring    Boolean            @default(false)
+  notes          String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  createdBy      String?
+  store          Store              @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  adminUser      AdminUser?         @relation(fields: [adminUserId], references: [id], onDelete: SetNull)
+
+  @@index([storeId, payPeriodStart])
+  @@index([adminUserId])
+}
+
+model CheckInOutEvent {
+  id             String        @id @default(cuid())
+  reservationId  String
+  storeId        String
+  type           CheckEventType
+  eventAt        DateTime      @default(now())
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  createdBy      String?
+  reservation    Reservation   @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  store          Store         @relation(fields: [storeId], references: [id], onDelete: Restrict)
+}
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  storeId        String?
+  reservationId  String?
+  actorType      String
+  actorId        String?
+  entityType     String
+  entityId       String
+  action         String
+  beforeJson     String?
+  afterJson      String?
+  note           String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  createdBy      String?
+  store          Store?      @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  reservation    Reservation? @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+}

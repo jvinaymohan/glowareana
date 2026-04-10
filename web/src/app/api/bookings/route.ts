@@ -10,7 +10,7 @@ import {
 } from "@/lib/rate-limit";
 
 export async function GET(request: NextRequest) {
-  const denied = requireAdmin(request);
+  const denied = await requireAdmin(request);
   if (denied) return denied;
 
   const from = request.nextUrl.searchParams.get("from") ?? "";
@@ -29,6 +29,15 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  if (process.env.DISABLE_LEGACY_BOOKING === "1") {
+    return NextResponse.json(
+      {
+        error:
+          "Legacy file-based booking is disabled. Use the platform (v2) booking flow or contact the venue.",
+      },
+      { status: 410 },
+    );
+  }
   const key = clientKeyFromRequest(request);
   if (!allowBookingMutation(key)) {
     return NextResponse.json(

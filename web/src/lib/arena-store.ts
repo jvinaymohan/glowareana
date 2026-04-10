@@ -50,6 +50,13 @@ export type StoredBooking = {
   phone: string;
   email: string;
   status: "confirmed";
+  visitState: "not_arrived" | "checked_in" | "checked_out";
+  checkInAt: string | null;
+  checkOutAt: string | null;
+  incidentalsInr: number;
+  adjustmentInr: number;
+  finalPayableInr: number;
+  adminNotes: string;
   /** Set when the guest was logged in at booking time, or linked on reschedule */
   userId: string | null;
 };
@@ -146,10 +153,39 @@ export function readStore(): ArenaStore {
       email: String(u.email ?? "").toLowerCase(),
     }));
     const bookings = (Array.isArray(parsed.bookings) ? parsed.bookings : []).map(
-      (b: StoredBooking) => ({
-        ...b,
-        userId: typeof b.userId === "string" ? b.userId : null,
-      }),
+      (b: StoredBooking): StoredBooking => {
+        const visitState: StoredBooking["visitState"] =
+          b.visitState === "checked_in" || b.visitState === "checked_out"
+            ? b.visitState
+            : "not_arrived";
+        return {
+          ...b,
+          userId: typeof b.userId === "string" ? b.userId : null,
+          visitState,
+          checkInAt: typeof b.checkInAt === "string" ? b.checkInAt : null,
+          checkOutAt: typeof b.checkOutAt === "string" ? b.checkOutAt : null,
+          incidentalsInr: Number.isFinite(Number(b.incidentalsInr))
+            ? Math.max(0, Math.round(Number(b.incidentalsInr)))
+            : 0,
+          adjustmentInr: Number.isFinite(Number(b.adjustmentInr))
+            ? Math.round(Number(b.adjustmentInr))
+            : 0,
+          finalPayableInr: Number.isFinite(Number(b.finalPayableInr))
+            ? Math.max(0, Math.round(Number(b.finalPayableInr)))
+            : Math.max(
+                0,
+                Math.round(
+                  Number((b as { payableInr?: number }).payableInr ?? 0) +
+                    Number((b as { incidentalsInr?: number }).incidentalsInr ?? 0) +
+                    Number((b as { adjustmentInr?: number }).adjustmentInr ?? 0),
+                ),
+              ),
+          adminNotes: sanitizeNotes(
+            String((b as { adminNotes?: string }).adminNotes ?? ""),
+            LIMITS.notesMax,
+          ),
+        };
+      },
     );
     return {
       bookings,
@@ -386,6 +422,13 @@ export function createBooking(
     phone: phoneE164,
     email: emailRes.value,
     status: "confirmed",
+    visitState: "not_arrived",
+    checkInAt: null,
+    checkOutAt: null,
+    incidentalsInr: 0,
+    adjustmentInr: 0,
+    finalPayableInr: payableInr,
+    adminNotes: "",
     userId: linkedUserId,
   };
 
@@ -733,11 +776,64 @@ export function rescheduleBooking(input: {
   return { ok: true, booking };
 }
 
+export function updateBookingOperations(input: {
+  bookingId: string;
+  action?: "check_in" | "check_out" | "reset_visit";
+  incidentalsInr?: number;
+  adjustmentInr?: number;
+  adminNotes?: string;
+}): { ok: true; booking: StoredBooking } | { ok: false; error: string } {
+  const store = readStore();
+  const booking = store.bookings.find((b) => b.id === input.bookingId);
+  if (!booking) return { ok: false, error: "Booking not found" };
+
+  if (input.action === "check_in") {
+    booking.visitState = "checked_in";
+    booking.checkInAt = new Date().toISOString();
+    if (booking.checkOutAt) booking.checkOutAt = null;
+  } else if (input.action === "check_out") {
+    if (booking.visitState !== "checked_in" && !booking.checkInAt) {
+      booking.checkInAt = new Date().toISOString();
+    }
+    booking.visitState = "checked_out";
+    booking.checkOutAt = new Date().toISOString();
+  } else if (input.action === "reset_visit") {
+    booking.visitState = "not_arrived";
+    booking.checkInAt = null;
+    booking.checkOutAt = null;
+  }
+
+  if (input.incidentalsInr !== undefined) {
+    const v = Number(input.incidentalsInr);
+    if (!Number.isFinite(v) || v < 0) {
+      return { ok: false, error: "incidentalsInr must be a non-negative number" };
+    }
+    booking.incidentalsInr = Math.round(v);
+  }
+  if (input.adjustmentInr !== undefined) {
+    const v = Number(input.adjustmentInr);
+    if (!Number.isFinite(v)) {
+      return { ok: false, error: "adjustmentInr must be a number" };
+    }
+    booking.adjustmentInr = Math.round(v);
+  }
+  if (input.adminNotes !== undefined) {
+    booking.adminNotes = sanitizeNotes(input.adminNotes, LIMITS.notesMax);
+  }
+  booking.finalPayableInr = Math.max(
+    0,
+    booking.payableInr + booking.incidentalsInr + booking.adjustmentInr,
+  );
+
+  writeStore(store);
+  return { ok: true, booking };
+}
+
 export function computeStats(store: ArenaStore, from: string, to: string) {
   const inRange = store.bookings.filter(
     (b) => b.date >= from && b.date <= to,
   );
-  const totalRevenue = inRange.reduce((s, b) => s + b.payableInr, 0);
+  const totalRevenue = inRange.reduce((s, b) => s + b.finalPayableInr, 0);
   const totalKids = inRange.reduce((s, b) => s + b.kidCount, 0);
   const byDay: Record<
     string,
@@ -746,7 +842,7 @@ export function computeStats(store: ArenaStore, from: string, to: string) {
   for (const b of inRange) {
     if (!byDay[b.date])
       byDay[b.date] = { revenue: 0, bookings: 0, kids: 0 };
-    byDay[b.date].revenue += b.payableInr;
+    byDay[b.date].revenue += b.finalPayableInr;
     byDay[b.date].bookings += 1;
     byDay[b.date].kids += b.kidCount;
   }
@@ -755,7 +851,7 @@ export function computeStats(store: ArenaStore, from: string, to: string) {
   for (const b of inRange) {
     if (!byGame[b.gameSlug])
       byGame[b.gameSlug] = { revenue: 0, bookings: 0, kids: 0 };
-    byGame[b.gameSlug].revenue += b.payableInr;
+    byGame[b.gameSlug].revenue += b.finalPayableInr;
     byGame[b.gameSlug].bookings += 1;
     byGame[b.gameSlug].kids += b.kidCount;
   }

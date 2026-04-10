@@ -3,7 +3,7 @@ import { requireAdmin } from "@/lib/admin-auth";
 import { addBlock, readStore, removeBlock } from "@/lib/arena-store";
 
 export async function GET(request: NextRequest) {
-  const denied = requireAdmin(request);
+  const denied = await requireAdmin(request);
   if (denied) return denied;
 
   const from = request.nextUrl.searchParams.get("from") ?? "";
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const denied = requireAdmin(request);
+  const denied = await requireAdmin(request);
   if (denied) return denied;
 
   try {
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const denied = requireAdmin(request);
+  const denied = await requireAdmin(request);
   if (denied) return denied;
 
   const id = request.nextUrl.searchParams.get("id");

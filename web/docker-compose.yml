@@ -1,0 +1,21 @@
+# Local Postgres for Glow Arena web app. Production: use Neon, RDS, Cloud SQL, etc.
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: glow
+      POSTGRES_PASSWORD: glow_dev_change_me
+      POSTGRES_DB: glowarena
+    ports:
+      - "5432:5432"
+    volumes:
+      - glow_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U glow -d glowarena"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  glow_pg_data:

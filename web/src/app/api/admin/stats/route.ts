@@ -3,7 +3,7 @@ import { requireAdmin } from "@/lib/admin-auth";
 import { computeStats, readStore } from "@/lib/arena-store";
 
 export async function GET(request: NextRequest) {
-  const denied = requireAdmin(request);
+  const denied = await requireAdmin(request);
   if (denied) return denied;
 
   const from =

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { DM_Sans, Montserrat } from "next/font/google";
+import { AnalyticsScript } from "@/components/AnalyticsScript";
 import { BetaBanner } from "@/components/BetaBanner";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -67,6 +68,7 @@ export default function RootLayout({
       className={`${display.variable} ${dmSans.variable} h-full scroll-smooth`}
     >
       <body className="flex min-h-dvh flex-col antialiased">
+        <AnalyticsScript />
         <BetaBanner />
         <SiteHeader />
         <main className="flex min-h-0 w-full min-w-0 flex-1 flex-col">{children}</main>

@@ -13,6 +13,15 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+        pathname: "/**",
+      },
+    ],
+  },
   // Pin workspace root so Turbopack doesn't pick a parent folder's lockfile (e.g. ~/package-lock.json).
   turbopack: {
     root: path.join(__dirname),

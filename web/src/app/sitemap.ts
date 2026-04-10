@@ -8,6 +8,10 @@ const PATHS = [
   "/corporate",
   "/contact",
   "/book",
+  "/legal/terms",
+  "/legal/privacy",
+  "/legal/refunds",
+  "/legal/safety",
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {

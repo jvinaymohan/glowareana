@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { BookNowLink } from "@/components/BookNowLink";
 import { useMemo, useState } from "react";
 import type { CouponTotals } from "@/components/CouponField";
 import { CouponField } from "@/components/CouponField";
@@ -229,23 +229,20 @@ export function ComboBuilder() {
         </p>
 
         <p className="text-xs text-zinc-500">
-          Prototype pricing — confirm at checkout. Sessions still follow 15 min
-          + 5 min reset rules per game.
+          Indicative total — final amount confirmed when you pick times on Book
+          now. Each game is ~25–30 min at the venue (play + briefing + reset).
         </p>
 
-        <Link
-          href={complete ? `/book` : "#"}
-          onClick={(e) => {
-            if (!complete) e.preventDefault();
-          }}
-          className={`block w-full min-h-[52px] rounded-full py-3.5 text-center text-base font-semibold touch-manipulation sm:py-3 sm:text-sm ${
-            complete
-              ? "bg-gradient-to-r from-[var(--ga-lava)] to-[var(--ga-orange)] text-[#0b0b12] active:brightness-95"
-              : "cursor-not-allowed bg-white/10 text-zinc-500"
-          }`}
-        >
-          Book now
-        </Link>
+        {complete ? (
+          <BookNowLink
+            source="combo_builder"
+            className="ga-btn-neon block w-full min-h-[52px] rounded-full bg-gradient-to-r from-[var(--ga-lava)] to-[var(--ga-orange)] py-3.5 text-center text-base font-semibold text-[#0b0b12] touch-manipulation active:brightness-95 sm:py-3 sm:text-sm"
+          />
+        ) : (
+          <span className="block w-full min-h-[52px] cursor-not-allowed rounded-full bg-white/10 py-3.5 text-center text-base font-semibold text-zinc-500 sm:py-3 sm:text-sm">
+            Book now
+          </span>
+        )}
       </aside>
     </div>
   );

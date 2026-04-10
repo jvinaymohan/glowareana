@@ -1,10 +1,11 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { generateDaySlots } from "@/lib/booking";
 import { games, site } from "@/lib/site";
 
-const LS_KEY = "glowArenaAdminSecret";
+const fetchCred: RequestInit = { credentials: "include" };
 
 type BookingRow = {
   id: string;
@@ -20,6 +21,13 @@ type BookingRow = {
   email: string;
   createdAt: string;
   userId: string | null;
+  visitState: "not_arrived" | "checked_in" | "checked_out";
+  checkInAt: string | null;
+  checkOutAt: string | null;
+  incidentalsInr: number;
+  adjustmentInr: number;
+  finalPayableInr: number;
+  adminNotes: string;
 };
 
 type BlockRow = {
@@ -62,7 +70,7 @@ function defaultRange() {
 }
 
 export function AdminDashboard() {
-  const [secret, setSecret] = useState("");
+  const router = useRouter();
   const [range, setRange] = useState(defaultRange);
   const [statsFrom, setStatsFrom] = useState(defaultRange().from);
   const [statsTo, setStatsTo] = useState(defaultRange().to);
@@ -87,12 +95,10 @@ export function AdminDashboard() {
   const [blockNote, setBlockNote] = useState("");
 
   const [upcomingOnly, setUpcomingOnly] = useState(false);
-
-  const headers = useCallback((): HeadersInit => {
-    const h: HeadersInit = {};
-    if (secret.trim()) h["x-admin-secret"] = secret.trim();
-    return h;
-  }, [secret]);
+  const [opsBookingId, setOpsBookingId] = useState<string>("");
+  const [opsIncidentalsInr, setOpsIncidentalsInr] = useState(0);
+  const [opsAdjustmentInr, setOpsAdjustmentInr] = useState(0);
+  const [opsNotes, setOpsNotes] = useState("");
 
   const refresh = useCallback(async () => {
     setLoadError(null);
@@ -101,19 +107,19 @@ export function AdminDashboard() {
       const [bRes, blRes, sRes, bpRes] = await Promise.all([
         fetch(
           `/api/bookings?from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}`,
-          { headers: headers() },
+          fetchCred,
         ),
         fetch(
           `/api/blocks?from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}`,
-          { headers: headers() },
+          fetchCred,
         ),
         fetch(
           `/api/admin/stats?from=${encodeURIComponent(statsFrom)}&to=${encodeURIComponent(statsTo)}`,
-          { headers: headers() },
+          fetchCred,
         ),
         fetch(
           `/api/birthday-requests?from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}`,
-          { headers: headers() },
+          fetchCred,
         ),
       ]);
       if (!bRes.ok) {
@@ -157,19 +163,21 @@ export function AdminDashboard() {
     } finally {
       setBusy(false);
     }
-  }, [headers, range.from, range.to, statsFrom, statsTo]);
+  }, [range.from, range.to, statsFrom, statsTo]);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
 
-  useEffect(() => {
-    const s = localStorage.getItem(LS_KEY);
-    if (s) setSecret(s);
-  }, []);
-
-  function saveSecret() {
-    localStorage.setItem(LS_KEY, secret.trim());
+  async function signOut() {
+    setBusy(true);
+    try {
+      await fetch("/api/admin/logout", { method: "POST", ...fetchCred });
+      router.push("/admin");
+      router.refresh();
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function addBlock(e: React.FormEvent) {
@@ -179,7 +187,8 @@ export function AdminDashboard() {
     try {
       const r = await fetch("/api/blocks", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...headers() },
+        headers: { "Content-Type": "application/json" },
+        ...fetchCred,
         body: JSON.stringify({
           date: blockDate,
           gameSlug: blockGame,
@@ -204,7 +213,8 @@ export function AdminDashboard() {
     try {
       const r = await fetch("/api/birthday-requests", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", ...headers() },
+        headers: { "Content-Type": "application/json" },
+        ...fetchCred,
         body: JSON.stringify({ id, blocksPublicSlots: next }),
       });
       const j = await r.json().catch(() => ({}));
@@ -223,7 +233,7 @@ export function AdminDashboard() {
     try {
       const r = await fetch(`/api/blocks?id=${encodeURIComponent(id)}`, {
         method: "DELETE",
-        headers: headers(),
+        ...fetchCred,
       });
       if (!r.ok) {
         const j = await r.json().catch(() => ({}));
@@ -237,6 +247,44 @@ export function AdminDashboard() {
     }
   }
 
+  useEffect(() => {
+    if (!opsBookingId) return;
+    const b = bookings.find((x) => x.id === opsBookingId);
+    if (!b) return;
+    setOpsIncidentalsInr(b.incidentalsInr);
+    setOpsAdjustmentInr(b.adjustmentInr);
+    setOpsNotes(b.adminNotes ?? "");
+  }, [opsBookingId, bookings]);
+
+  async function patchBookingOps(action?: "check_in" | "check_out" | "reset_visit") {
+    if (!opsBookingId) {
+      setLoadError("Select a booking first");
+      return;
+    }
+    setBusy(true);
+    setLoadError(null);
+    try {
+      const r = await fetch(`/api/admin/bookings/${encodeURIComponent(opsBookingId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        ...fetchCred,
+        body: JSON.stringify({
+          action,
+          incidentalsInr: opsIncidentalsInr,
+          adjustmentInr: opsAdjustmentInr,
+          adminNotes: opsNotes,
+        }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error((j as { error?: string }).error ?? "Update failed");
+      await refresh();
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : "Update failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function exportCsv() {
     const cols = [
       "reference",
@@ -245,6 +293,10 @@ export function AdminDashboard() {
       "slotLabel",
       "kidCount",
       "payableInr",
+      "finalPayableInr",
+      "visitState",
+      "incidentalsInr",
+      "adjustmentInr",
       "customerName",
       "phone",
       "email",
@@ -303,40 +355,26 @@ export function AdminDashboard() {
           <p className="mt-1 break-words text-sm text-zinc-500">
             Bookings, blocks, revenue & people — local JSON store (
             <code className="break-all text-zinc-400">data/arena-store.json</code>
-            ).
+            ). When <code className="text-zinc-400">ADMIN_SECRET</code> is set,
+            sign in at <code className="text-zinc-400">/admin/login</code>.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => refresh()}
-          disabled={busy}
-          className="min-h-[48px] shrink-0 rounded-full border border-white/20 px-5 py-2.5 text-sm text-white touch-manipulation hover:bg-white/5 disabled:opacity-50"
-        >
-          {busy ? "Loading…" : "Refresh data"}
-        </button>
-      </div>
-
-      <div className="mt-8 rounded-2xl border border-white/10 bg-[var(--ga-surface)] p-5">
-        <h2 className="text-sm font-semibold text-white">Admin access</h2>
-        <p className="mt-1 text-xs text-zinc-500">
-          Set <code className="text-zinc-400">ADMIN_SECRET</code> in{" "}
-          <code className="text-zinc-400">.env.local</code> to lock APIs. Leave
-          unset for open local dev.
-        </p>
-        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-          <input
-            type="password"
-            value={secret}
-            onChange={(e) => setSecret(e.target.value)}
-            placeholder="ADMIN_SECRET value"
-            className="w-full max-w-md rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-white outline-none focus:border-[var(--ga-blue)] sm:flex-1"
-          />
+        <div className="flex shrink-0 flex-wrap gap-2">
           <button
             type="button"
-            onClick={saveSecret}
-            className="rounded-lg bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/15"
+            onClick={() => void signOut()}
+            disabled={busy}
+            className="min-h-[48px] rounded-full border border-white/20 px-5 py-2.5 text-sm text-zinc-300 touch-manipulation hover:bg-white/5 disabled:opacity-50"
           >
-            Save in browser
+            Sign out
+          </button>
+          <button
+            type="button"
+            onClick={() => refresh()}
+            disabled={busy}
+            className="min-h-[48px] rounded-full border border-white/20 px-5 py-2.5 text-sm text-white touch-manipulation hover:bg-white/5 disabled:opacity-50"
+          >
+            {busy ? "Loading…" : "Refresh data"}
           </button>
         </div>
       </div>
@@ -659,6 +697,94 @@ export function AdminDashboard() {
       </div>
 
       <div className="mt-8 rounded-2xl border border-white/10 bg-[var(--ga-surface)] p-5">
+        <h2 className="font-[family-name:var(--font-syne)] text-lg font-bold text-white">
+          Front desk actions
+        </h2>
+        <p className="mt-1 text-xs text-zinc-500">
+          Check-in/check-out and record incidentals or manual adjustments.
+        </p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <label className="text-xs text-zinc-400">
+            Booking
+            <select
+              value={opsBookingId}
+              onChange={(e) => setOpsBookingId(e.target.value)}
+              className="mt-1 block w-full rounded-lg border border-white/10 bg-black/30 px-2 py-2 text-sm text-white"
+            >
+              <option value="">Select booking</option>
+              {filteredBookings.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.reference} · {b.date} · {b.customerName}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-xs text-zinc-400">
+            Incidentals (₹)
+            <input
+              type="number"
+              min={0}
+              value={opsIncidentalsInr}
+              onChange={(e) => setOpsIncidentalsInr(Math.max(0, Number(e.target.value || 0)))}
+              className="mt-1 block w-full rounded-lg border border-white/10 bg-black/30 px-2 py-2 text-sm text-white"
+            />
+          </label>
+          <label className="text-xs text-zinc-400">
+            Adjustment (₹, can be negative)
+            <input
+              type="number"
+              value={opsAdjustmentInr}
+              onChange={(e) => setOpsAdjustmentInr(Number(e.target.value || 0))}
+              className="mt-1 block w-full rounded-lg border border-white/10 bg-black/30 px-2 py-2 text-sm text-white"
+            />
+          </label>
+          <label className="text-xs text-zinc-400 sm:col-span-2">
+            Notes
+            <input
+              value={opsNotes}
+              onChange={(e) => setOpsNotes(e.target.value)}
+              placeholder="Walk-in socks, extra game, waiver check..."
+              className="mt-1 block w-full rounded-lg border border-white/10 bg-black/30 px-2 py-2 text-sm text-white"
+            />
+          </label>
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={busy || !opsBookingId}
+            onClick={() => void patchBookingOps("check_in")}
+            className="rounded-full border border-[var(--ga-blue)]/40 px-4 py-2 text-xs text-[var(--ga-blue)] disabled:opacity-40"
+          >
+            Check in
+          </button>
+          <button
+            type="button"
+            disabled={busy || !opsBookingId}
+            onClick={() => void patchBookingOps("check_out")}
+            className="rounded-full border border-[var(--ga-orange)]/40 px-4 py-2 text-xs text-[var(--ga-orange)] disabled:opacity-40"
+          >
+            Check out
+          </button>
+          <button
+            type="button"
+            disabled={busy || !opsBookingId}
+            onClick={() => void patchBookingOps("reset_visit")}
+            className="rounded-full border border-white/20 px-4 py-2 text-xs text-zinc-300 disabled:opacity-40"
+          >
+            Reset visit
+          </button>
+          <button
+            type="button"
+            disabled={busy || !opsBookingId}
+            onClick={() => void patchBookingOps()}
+            className="rounded-full bg-[var(--ga-lava)] px-4 py-2 text-xs font-semibold text-[#0b0b12] disabled:opacity-40"
+          >
+            Save charges
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-8 rounded-2xl border border-white/10 bg-[var(--ga-surface)] p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 className="font-[family-name:var(--font-syne)] text-lg font-bold text-white">
@@ -713,6 +839,8 @@ export function AdminDashboard() {
                 <th className="py-2 pr-2">Slot</th>
                 <th className="py-2 pr-2">Kids</th>
                 <th className="py-2 pr-2">Paid</th>
+                <th className="py-2 pr-2">Final</th>
+                <th className="py-2 pr-2">Visit</th>
                 <th className="py-2 pr-2">Contact</th>
                 <th className="py-2 pr-2">Phone</th>
                 <th className="py-2">Account</th>
@@ -721,7 +849,7 @@ export function AdminDashboard() {
             <tbody>
               {filteredBookings.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-8 text-center text-zinc-600">
+                  <td colSpan={11} className="py-8 text-center text-zinc-600">
                     No bookings in range
                   </td>
                 </tr>
@@ -736,6 +864,14 @@ export function AdminDashboard() {
                     <td className="py-2 pr-2">{b.slotLabel}</td>
                     <td className="py-2 pr-2">{b.kidCount}</td>
                     <td className="py-2 pr-2">{money(b.payableInr)}</td>
+                    <td className="py-2 pr-2">{money(b.finalPayableInr ?? b.payableInr)}</td>
+                    <td className="py-2 pr-2 text-[10px] uppercase">
+                      {b.visitState === "checked_in"
+                        ? "Checked in"
+                        : b.visitState === "checked_out"
+                          ? "Checked out"
+                          : "Not arrived"}
+                    </td>
                     <td className="py-2 pr-2">{b.customerName}</td>
                     <td className="py-2 pr-2 font-mono text-[10px] text-zinc-400">
                       {b.phone}

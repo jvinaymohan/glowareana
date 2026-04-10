@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { FlowContactBar } from "@/components/FlowContactBar";
+import { SafetyPanel } from "@/components/SafetyPanel";
 import { bookingAuthHref } from "@/lib/booking-auth";
 import {
   BOOKING_RULES,
@@ -12,7 +14,8 @@ import {
 import { formatLocalYmd } from "@/lib/date-utils";
 import type { CouponTotals } from "@/components/CouponField";
 import { CouponField } from "@/components/CouponField";
-import { games } from "@/lib/site";
+import { EXPERIENCE_WINDOW_COPY, games } from "@/lib/site";
+import { trackEvent } from "@/lib/analytics";
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -104,7 +107,8 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
 
   useEffect(() => {
     const max = selectedGame.maxKidsPerSession;
-    setKidCount((k) => Math.min(Math.max(1, k), max));
+    const min = selectedGame.minKidsPerSession;
+    setKidCount((k) => Math.min(Math.max(min, k), max));
   }, [selectedGame]);
 
   useEffect(() => {
@@ -194,7 +198,8 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
   }, [availability, slotKey]);
 
   const kidsValid =
-    kidCount >= 1 && kidCount <= selectedGame.maxKidsPerSession;
+    kidCount >= selectedGame.minKidsPerSession &&
+    kidCount <= selectedGame.maxKidsPerSession;
 
   const bookingSubtotal = selectedGame.priceInr * kidCount;
   const payableInr = couponTotals?.payableInr ?? bookingSubtotal;
@@ -214,8 +219,8 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
             </p>
           ) : null}
           <p className="mt-2 text-zinc-400">
-            Saved to the arena booking store. Razorpay can be added for real
-            payments; see admin for slots and revenue.
+            Payment is collected at the venue unless you&apos;ve been sent an
+            online link. Keep your reference handy for check-in.
           </p>
           {notifyStatus ? (
             <div className="mx-auto mt-6 max-w-sm rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-left text-sm">
@@ -392,18 +397,57 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
     );
   }
 
+  const macroStep = step <= 2 ? 1 : step === 3 ? 2 : 3;
+  const macroLabels = [
+    "1 · Game & group",
+    "2 · Date & time",
+    "3 · Pay & confirm",
+  ] as const;
+
   return (
     <div className="rounded-2xl border border-white/10 bg-[var(--ga-surface)] p-5 sm:p-8">
-      <div className="mb-5 flex gap-2 sm:mb-6">
-        {([1, 2, 3, 4] as const).map((s) => (
-          <div
-            key={s}
-            className={`h-1 flex-1 rounded-full transition-colors ${
-              step >= s ? "bg-[var(--ga-lava)]" : "bg-white/10"
-            }`}
-          />
-        ))}
+      <div className="mb-4 flex flex-col gap-2 sm:mb-5">
+        <div className="flex justify-between gap-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500 sm:text-xs">
+          {macroLabels.map((label, i) => {
+            const n = i + 1;
+            const active = macroStep === n;
+            return (
+              <span
+                key={label}
+                className={
+                  active ? "text-[var(--ga-orange)]" : "text-zinc-600"
+                }
+              >
+                {label}
+              </span>
+            );
+          })}
+        </div>
+        <div className="flex gap-2">
+          {([1, 2, 3, 4] as const).map((s) => (
+            <div
+              key={s}
+              className={`h-1 flex-1 rounded-full transition-colors ${
+                step >= s ? "bg-[var(--ga-lava)]" : "bg-white/10"
+              }`}
+            />
+          ))}
+        </div>
       </div>
+
+      {bookingEntry === "flow" && step >= 1 && step <= 3 ? (
+        <div className="mb-5 rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm sm:mb-6">
+          <p className="font-medium text-zinc-200">Your selection</p>
+          <p className="mt-1 text-zinc-400">
+            <span className="text-white">{selectedGame.title}</span> ·{" "}
+            {kidCount} kid{kidCount === 1 ? "" : "s"} ·{" "}
+            <span className="text-[var(--ga-orange)]">
+              ₹{bookingSubtotal.toLocaleString("en-IN")} est.
+            </span>{" "}
+            · {EXPERIENCE_WINDOW_COPY}
+          </p>
+        </div>
+      ) : null}
 
       {sessionUser ? (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--ga-cyan)]/25 bg-[var(--ga-cyan)]/5 px-4 py-3 text-sm text-zinc-300">
@@ -421,16 +465,12 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
       ) : null}
 
       <p className="mb-5 rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-xs leading-relaxed text-zinc-400 sm:mb-6">
-        Each game is <strong className="text-zinc-200">15 minutes</strong> of
-        play. We block{" "}
-        <strong className="text-zinc-200">
-          {BOOKING_RULES.resetMinutes} minutes
-        </strong>{" "}
-        after every session to reset the arena. Start times are{" "}
+        {EXPERIENCE_WINDOW_COPY}. Start times are{" "}
         <strong className="text-zinc-200">
           {slotIntervalMinutes()} minutes
         </strong>{" "}
-        apart (10:00 AM – 7:40 PM, one lane per game — prototype schedule).
+        apart on this lane ({BOOKING_RULES.resetMinutes} min reset between
+        groups). Schedule shown is subject to soft-opening hours.
       </p>
 
       {step === 1 && (
@@ -452,11 +492,13 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
               >
                 <p className="font-semibold text-white">{g.title}</p>
                 <p className="mt-2 text-xs text-zinc-400">
-                  Max{" "}
+                  Ages {g.agesShort} ·{" "}
                   <span className="font-semibold text-[var(--ga-orange)]">
-                    {g.maxKidsPerSession} kids
+                    {g.minKidsPerSession === g.maxKidsPerSession
+                      ? `${g.maxKidsPerSession} kids`
+                      : `${g.minKidsPerSession}–${g.maxKidsPerSession} kids`}
                   </span>{" "}
-                  per 15-min session · {g.priceFrom}
+                  · {g.priceFrom}
                 </p>
                 <p className="mt-1 text-[11px] text-zinc-500">
                   {MAX_SLOTS} start times / day on this lane (includes 5-min
@@ -482,17 +524,19 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
           </h2>
           <p className="text-sm text-zinc-400">
             <span className="font-medium text-white">{selectedGame.title}</span>{" "}
-            allows up to{" "}
+            allows{" "}
             <span className="text-[var(--ga-blue)] font-semibold">
-              {selectedGame.maxKidsPerSession} kids
+              {selectedGame.minKidsPerSession === selectedGame.maxKidsPerSession
+                ? `${selectedGame.maxKidsPerSession} kids`
+                : `${selectedGame.minKidsPerSession}–${selectedGame.maxKidsPerSession} kids`}
             </span>{" "}
-            in one 15-minute block.
+            per slot ({EXPERIENCE_WINDOW_COPY}).
           </p>
           <label className="block text-sm text-zinc-400">
             Kids in your group
             <input
               type="number"
-              min={1}
+              min={selectedGame.minKidsPerSession}
               max={selectedGame.maxKidsPerSession}
               value={kidCount}
               onChange={(e) => {
@@ -501,7 +545,7 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
                 setKidCount(
                   Math.min(
                     selectedGame.maxKidsPerSession,
-                    Math.max(1, v),
+                    Math.max(selectedGame.minKidsPerSession, v),
                   ),
                 );
               }}
@@ -510,7 +554,8 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
           </label>
           {!kidsValid ? (
             <p className="text-sm text-[var(--ga-lava)]">
-              Enter between 1 and {selectedGame.maxKidsPerSession} kids.
+              Enter between {selectedGame.minKidsPerSession} and{" "}
+              {selectedGame.maxKidsPerSession} kids.
             </p>
           ) : null}
           <div className="flex flex-wrap gap-2">
@@ -540,7 +585,10 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
           </h2>
           <p className="text-sm text-zinc-400">
             {slotsLoading ? (
-              "Loading live availability…"
+              <span className="inline-flex items-center gap-2">
+                <span className="inline-block size-2 animate-pulse rounded-full bg-[var(--ga-cyan)]" />
+                Checking live availability for this date…
+              </span>
             ) : slotsError ? (
               <span className="text-[var(--ga-lava)]">{slotsError}</span>
             ) : birthdayPartyHold ? (
@@ -653,6 +701,7 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
 
       {step === 4 && (
         <div className="space-y-4">
+          <FlowContactBar source="book_confirm" />
           <h2 className="font-[family-name:var(--font-syne)] text-xl font-bold text-white">
             Confirm your booking
           </h2>
@@ -705,6 +754,7 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
               </span>
             </label>
           </div>
+          <SafetyPanel game={selectedGame} compact className="max-w-xl" />
           <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 p-4">
             <input
               type="checkbox"
@@ -713,17 +763,25 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
               className="mt-1 size-4 rounded border-white/30 accent-[var(--ga-lava)]"
             />
             <span className="text-sm text-zinc-300">
-              I accept the participation waiver & safety rules (prototype —
-              legal copy TBD).
+              I accept the participation waiver and{" "}
+              <Link
+                href="/legal/safety"
+                className="text-[var(--ga-cyan)] hover:underline"
+              >
+                safety guidelines
+              </Link>{" "}
+              for myself and the children in my booking.
             </span>
           </label>
-          <p className="text-sm text-zinc-400">
-            Payment is still simulated; your booking is written to the server
-            store and appears under{" "}
-            <a href="/admin" className="text-[var(--ga-blue)] hover:underline">
-              Admin
-            </a>
-            .
+          <p className="rounded-lg border border-[var(--ga-cyan)]/25 bg-[var(--ga-cyan)]/5 px-4 py-3 text-sm text-zinc-300">
+            <strong className="text-white">Confirmation:</strong> with SMS/email
+            toggles on, you&apos;ll receive your booking reference by{" "}
+            <strong className="text-white">SMS and email</strong> (when delivery
+            is configured on our side). Turn a channel off if you don&apos;t want
+            that copy.
+          </p>
+          <p className="text-sm text-zinc-500">
+            Total below is payable at the venue unless we send you a payment link.
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block text-sm text-zinc-400">
@@ -776,8 +834,7 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
               {formatDate(date)} · {selectedSlot?.rangeLabel}
             </p>
             <p className="mt-1 text-zinc-500">
-              {kidCount} kid{kidCount === 1 ? "" : "s"} · 15 min session ·{" "}
-              {BOOKING_RULES.resetMinutes} min reset before next group
+              {kidCount} kid{kidCount === 1 ? "" : "s"} · {EXPERIENCE_WINDOW_COPY}
             </p>
             <div className="mt-4 space-y-1 border-t border-white/10 pt-3">
               <div className="flex justify-between text-zinc-400">
@@ -837,6 +894,7 @@ export function BookingPrototype({ initialGameSlug }: BookingPrototypeProps) {
                   return;
                 }
                 setSubmitting(true);
+                trackEvent("booking_confirm_click", { game: gameId });
                 try {
                   const r = await fetch("/api/bookings", {
                     method: "POST",

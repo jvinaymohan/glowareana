@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
+import { FlowContactBar } from "@/components/FlowContactBar";
+import { GoogleMapBlock } from "@/components/GoogleMapBlock";
 import { LeadForm } from "@/components/LeadForm";
+import { VisitMini } from "@/components/VisitMini";
 import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -13,12 +16,14 @@ export default function ContactPage() {
       <h1 className="font-[family-name:var(--font-syne)] text-3xl font-bold leading-tight text-white sm:text-4xl">
         Let&apos;s talk
       </h1>
-      <p className="mt-4 text-base leading-relaxed text-zinc-400">
-        Reach the arena team — swap in your real number and WhatsApp Business
-        link.
+      <p className="mt-4 max-w-2xl text-base leading-relaxed text-zinc-400">
+        Call, WhatsApp, or email the {site.name} team — we reply fastest on
+        WhatsApp during soft opening hours.
       </p>
 
-      <div className="mt-10 grid gap-10 lg:grid-cols-2">
+      <FlowContactBar source="contact_top" className="mt-8" />
+
+      <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_300px]">
         <div className="space-y-6">
           <div className="rounded-2xl border border-white/10 bg-[var(--ga-surface)] p-6">
             <p className="text-sm text-zinc-500">Phone</p>
@@ -50,27 +55,19 @@ export default function ContactPage() {
             </a>
             <p className="mt-4 text-sm text-zinc-400">{site.address}</p>
           </div>
-        </div>
 
-        <div className="rounded-2xl border border-white/10 bg-[var(--ga-surface)] p-6 sm:p-8">
-          <h2 className="font-[family-name:var(--font-syne)] text-xl font-bold text-white">
-            Contact form
-          </h2>
-          <div className="mt-6">
-            <LeadForm context="General contact" />
+          <div className="rounded-2xl border border-white/10 bg-[var(--ga-surface)] p-6 sm:p-8">
+            <h2 className="font-[family-name:var(--font-syne)] text-xl font-bold text-white">
+              Contact form
+            </h2>
+            <div className="mt-6">
+              <LeadForm context="General contact" />
+            </div>
           </div>
-        </div>
-      </div>
 
-      <div className="mt-12 min-h-[220px] w-full max-w-full overflow-hidden rounded-2xl border border-white/10 aspect-video sm:min-h-0">
-        <iframe
-          title="Glow Arena map"
-          src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d248849.84916296526!2d77.44109579999999!3d12.9539594!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bae145edc12ae15%3A0x5d6fa3f68c672c4e!2sKoramangala%2C%20Bengaluru%2C%20Karnataka!5e0!3m2!1sen!2sin!4v1710000000000!5m2!1sen!2sin"
-          className="h-full min-h-[220px] w-full border-0 sm:min-h-0"
-          loading="lazy"
-          allowFullScreen
-          referrerPolicy="no-referrer-when-downgrade"
-        />
+          <GoogleMapBlock />
+        </div>
+        <VisitMini source="contact_sidebar" className="h-fit lg:sticky lg:top-24" />
       </div>
     </div>
   );

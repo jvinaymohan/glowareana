@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { BookNowLink } from "@/components/BookNowLink";
 
 const STORAGE_KEY = "ga_beta_banner_dismissed";
 
@@ -40,28 +41,28 @@ export function BetaBanner() {
       className="relative z-[60] border-b border-[var(--ga-orange)]/40 bg-gradient-to-r from-[var(--ga-orange)]/20 via-[var(--ga-magenta)]/15 to-[var(--ga-cyan)]/15 px-4 py-2.5 pr-14 text-center sm:py-2 sm:pr-12"
     >
       <p className="text-xs leading-snug text-zinc-200 sm:text-sm">
-        <span className="font-semibold text-[var(--ga-yellow)]">Beta testing</span>
+        <span className="font-semibold text-[var(--ga-yellow)]">Soft opening</span>
         {" — "}
-        Bookings and flows are live for feedback. Found a bug or rough edge?{" "}
+        Now accepting early bookings while we fine-tune the arena. If we need to
+        reschedule your slot, we&apos;ll call or WhatsApp within{" "}
+        <strong className="font-medium text-white">4 hours</strong>. Questions?{" "}
         <Link
           href="/contact"
           className="font-medium text-[var(--ga-cyan)] underline-offset-2 hover:underline"
         >
-          Tell us
+          Contact
         </Link>
         {" · "}
-        <Link
-          href="/book"
+        <BookNowLink
+          source="beta_banner"
           className="font-medium text-white underline-offset-2 hover:underline"
-        >
-          Book now
-        </Link>
+        />
       </p>
       <button
         type="button"
         onClick={dismiss}
         className="absolute right-2 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-lg text-lg text-zinc-400 touch-manipulation hover:bg-white/10 hover:text-white sm:right-3"
-        aria-label="Dismiss beta notice"
+        aria-label="Dismiss notice"
       >
         ×
       </button>

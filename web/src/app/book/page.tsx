@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
+import { BookingFaq } from "@/components/BookingFaq";
 import { BookingPrototype } from "@/components/BookingPrototype";
 import { SiteLogo, SiteLogoLockup } from "@/components/SiteLogo";
+import { BOOKING_FAQ_ITEMS } from "@/lib/faq-content";
 import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Book now",
-  description: `Book ${site.name} — select games, time slots, and pay online (prototype flow).`,
+  description: `Book ${site.name} — pick a game, time slot, and confirm by SMS or email.`,
 };
 
 export default async function BookPage({
@@ -37,6 +39,9 @@ export default async function BookPage({
       </p>
       <div className="mt-8 sm:mt-10">
         <BookingPrototype initialGameSlug={game} />
+      </div>
+      <div className="mt-14 border-t border-white/10 pt-12">
+        <BookingFaq items={BOOKING_FAQ_ITEMS} />
       </div>
     </div>
   );

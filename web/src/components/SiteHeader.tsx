@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { BookNowLink } from "@/components/BookNowLink";
 import { nav, site } from "@/lib/site";
 import { AuthNav, AuthNavMobile } from "@/components/AuthNav";
 import { SiteLogo, SiteLogoLockup } from "@/components/SiteLogo";
@@ -44,18 +45,14 @@ export function SiteHeader() {
         </nav>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-          <Link
-            href="/book"
+          <BookNowLink
+            source="header_mobile"
             className="ga-btn-neon inline-flex min-h-10 items-center rounded-full px-3 py-2 text-xs font-semibold shadow-[0_0_24px_rgba(255,45,140,0.25)] transition touch-manipulation active:brightness-95 sm:hidden"
-          >
-            Book now
-          </Link>
-          <Link
-            href="/book"
+          />
+          <BookNowLink
+            source="header_desktop"
             className="ga-btn-neon hidden min-h-10 items-center rounded-full px-5 py-2 text-sm font-semibold shadow-[0_0_24px_rgba(255,45,140,0.25)] transition touch-manipulation active:brightness-95 sm:inline-flex"
-          >
-            Book now
-          </Link>
+          />
           <AuthNav />
           <button
             type="button"

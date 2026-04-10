@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { BirthdayPartyPlanner } from "@/components/BirthdayPartyPlanner";
+import { BookingFaq } from "@/components/BookingFaq";
+import { BookNowLink } from "@/components/BookNowLink";
+import { FlowContactBar } from "@/components/FlowContactBar";
+import { VisitMini } from "@/components/VisitMini";
+import { BOOKING_FAQ_ITEMS } from "@/lib/faq-content";
 import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -8,35 +14,38 @@ export const metadata: Metadata = {
   description: `Birthday party planner at ${site.name} — kids, game combos, return gifts, Koramangala.`,
 };
 
+const PARTY_IMG =
+  "https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=800&q=80&auto=format&fit=crop";
+
 const packages = [
   {
     name: "Basic Glow",
-    price: "From ₹X / child",
+    price: "From ₹1,299 / child",
     perks: [
       "90 min arena access",
       "Dedicated party host",
       "Digital invites template",
-      "Complimentary birthday shout-out on LED wall",
+      "Birthday shout-out on LED wall",
     ],
   },
   {
     name: "Premium Lava",
-    price: "From ₹X / child",
+    price: "From ₹1,899 / child",
     perks: [
       "Everything in Basic",
-      "Themed decor kit (neon / lava)",
+      "Neon / lava decor kit",
       "Team Arena Battle add-on",
       "Priority weekend slot hold",
     ],
     highlight: true,
   },
   {
-    name: "Custom Build",
+    name: "Arena buyout",
     price: "Quote on request",
     perks: [
-      "Full arena buyout options",
+      "Private venue window",
       "Catering partner coordination",
-      "Private games master & contests",
+      "Games master & contests",
       "Photo / video add-ons",
     ],
   },
@@ -52,25 +61,46 @@ export default function BirthdayPage() {
         Parties that feel like a season finale
       </h1>
       <p className="mt-4 max-w-2xl text-base leading-relaxed text-zinc-400 sm:text-lg">
-        Plan the crew size, pick a{" "}
+        Plan crew size, pick a{" "}
         <Link href="/combos" className="text-[var(--ga-blue)] hover:underline">
           multi-game combo
         </Link>{" "}
-        with the same tiered discounts, and add return gifts if you like. We
-        confirm decor, host, and final quote after you submit.
+        with tiered discounts, add return gifts, and request a venue hold on your
+        date. We confirm host, decor, and final quote after you submit.
       </p>
+
+      <FlowContactBar source="birthday_top" className="mt-8" />
+
+      <div className="mt-10 grid gap-8 lg:grid-cols-[1fr_300px] lg:items-start">
+        <div className="relative aspect-[21/9] w-full overflow-hidden rounded-2xl border border-white/10 sm:aspect-[2/1]">
+          <Image
+            src={PARTY_IMG}
+            alt="Colourful birthday celebration"
+            fill
+            className="object-cover"
+            sizes="(max-width: 1024px) 100vw, 66vw"
+            priority
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-transparent" />
+          <p className="absolute bottom-4 left-4 max-w-sm text-sm text-zinc-200">
+            Placeholder image — replace with your party room and arena photos.
+          </p>
+        </div>
+        <VisitMini source="birthday_sidebar" className="h-fit lg:sticky lg:top-24" />
+      </div>
 
       <section id="planner" className="mt-14 scroll-mt-24">
         <h2 className="font-[family-name:var(--font-syne)] text-2xl font-bold text-white">
           Birthday planner
         </h2>
         <p className="mt-2 text-sm text-zinc-500">
-          Different from single-slot arena booking — this is for full party
-          planning (no time-slot picker here).
+          Different from single-slot arena booking — full party planning (we
+          follow up on WhatsApp or phone).
         </p>
         <div className="mt-8">
           <BirthdayPartyPlanner />
         </div>
+        <FlowContactBar source="birthday_after_planner" className="mt-8" />
       </section>
 
       <div className="mt-20">
@@ -78,7 +108,7 @@ export default function BirthdayPage() {
           Host & decor packages
         </h2>
         <p className="mt-2 text-sm text-zinc-400">
-          Layer these on top of your game combo — pricing placeholders.
+          Indicative per-child pricing — final numbers after date and headcount.
         </p>
         <div className="mt-8 grid gap-6 lg:grid-cols-3">
           {packages.map((p) => (
@@ -107,33 +137,29 @@ export default function BirthdayPage() {
                   </li>
                 ))}
               </ul>
-              <a
-                href="#planner"
-                className="mt-6 rounded-full bg-white py-2 text-center text-sm font-semibold text-[#0b0b12]"
-              >
-                Use planner above
-              </a>
+              <div className="mt-6 flex flex-col gap-2">
+                <Link
+                  href="/contact"
+                  className="rounded-full border border-white/20 py-2.5 text-center text-sm font-semibold text-white hover:bg-white/5"
+                >
+                  Enquire
+                </Link>
+                <BookNowLink
+                  source={`birthday_pkg_${p.name}`}
+                  href="#planner"
+                  className="rounded-full bg-white py-2.5 text-center text-sm font-semibold text-[#0b0b12]"
+                >
+                  Book this package
+                </BookNowLink>
+              </div>
             </div>
           ))}
         </div>
       </div>
 
-      <section className="mt-20">
-        <h2 className="font-[family-name:var(--font-syne)] text-2xl font-bold text-white">
-          Party gallery
-        </h2>
-        <p className="mt-2 text-sm text-zinc-400">
-          Replace with real photos from your venue.
-        </p>
-        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {[1, 2, 3, 4].map((n) => (
-            <div
-              key={n}
-              className="aspect-square rounded-xl bg-gradient-to-br from-[var(--ga-lava)]/30 to-[var(--ga-blue)]/20"
-            />
-          ))}
-        </div>
-      </section>
+      <div className="mt-16">
+        <BookingFaq items={BOOKING_FAQ_ITEMS} />
+      </div>
     </div>
   );
 }

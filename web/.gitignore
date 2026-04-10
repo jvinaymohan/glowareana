@@ -43,3 +43,8 @@ next-env.d.ts
 
 # local booking store (created at runtime)
 /data/arena-store.json
+
+# local SQLite (legacy); app uses Postgres — ignore stray .db files
+*.db
+
+/src/generated/prisma

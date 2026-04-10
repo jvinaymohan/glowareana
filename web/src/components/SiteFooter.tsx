@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { BookNowLink } from "@/components/BookNowLink";
 import { nav, site } from "@/lib/site";
 import { SiteLogo, SiteLogoLockup } from "@/components/SiteLogo";
 
 export function SiteFooter() {
   return (
     <footer className="mt-auto border-t border-[var(--ga-cyan)]/20 bg-black pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-12px_48px_rgba(255,45,140,0.06)]">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-10 sm:grid-cols-2 sm:px-6 sm:py-12 lg:grid-cols-3">
+      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-10 sm:grid-cols-2 sm:px-6 sm:py-12 lg:grid-cols-4">
         <div>
           <SiteLogoLockup className="inline-block">
             <SiteLogo variant="footer" />
@@ -16,15 +17,13 @@ export function SiteFooter() {
           <p className="mt-2 text-sm text-zinc-400">
             {site.tagline} · {site.area}
           </p>
-          <Link
-            href="/book"
+          <BookNowLink
+            source="footer"
             className="ga-btn-neon mt-5 inline-flex min-h-[44px] items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold touch-manipulation"
-          >
-            Book now
-          </Link>
+          />
           <p className="mt-4 text-xs text-zinc-500">
-            Beta — copy & pricing may change. Call or WhatsApp to confirm before
-            you travel.
+            Soft opening — hours and slots may adjust. Call or WhatsApp before you
+            travel if you&apos;re unsure.
           </p>
         </div>
         <div>
@@ -40,6 +39,43 @@ export function SiteFooter() {
                 </Link>
               </li>
             ))}
+          </ul>
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-zinc-300">Policies</p>
+          <ul className="mt-3 flex flex-col gap-2 text-sm">
+            <li>
+              <Link
+                href="/legal/terms"
+                className="text-zinc-400 transition hover:text-[var(--ga-cyan)]"
+              >
+                Terms of use
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/legal/privacy"
+                className="text-zinc-400 transition hover:text-[var(--ga-cyan)]"
+              >
+                Privacy
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/legal/refunds"
+                className="text-zinc-400 transition hover:text-[var(--ga-cyan)]"
+              >
+                Refunds & cancellations
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/legal/safety"
+                className="text-zinc-400 transition hover:text-[var(--ga-cyan)]"
+              >
+                Safety guidelines
+              </Link>
+            </li>
           </ul>
         </div>
         <div>
@@ -68,7 +104,7 @@ export function SiteFooter() {
         </div>
       </div>
       <div className="border-t border-white/5 py-4 text-center text-xs text-zinc-600">
-        © {new Date().getFullYear()} {site.name}. Beta preview.
+        © {new Date().getFullYear()} {site.name}. Soft opening period.
       </div>
     </footer>
   );
